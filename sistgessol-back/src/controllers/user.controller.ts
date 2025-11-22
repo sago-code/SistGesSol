@@ -46,6 +46,7 @@ export const getMe = async (req: AuthenticatedRequest, res: Response): Promise<R
         return res.status(401).json({ message: 'No autenticado' });
     }
     try {
+        res.set('Cache-Control', 'no-store');
         const user = await new UserService().getUserById(userId);
         if (!user) {
             return res.status(404).json({ message: 'Usuario no encontrado' });
@@ -64,6 +65,7 @@ export const updateMe = async (req: AuthenticatedRequest, res: Response): Promis
     }
     const { firstName, lastName, phone } = req.body || {};
     try {
+        res.set('Cache-Control', 'no-store');
         const user = await new UserService().updateUser(userId, { firstName, lastName, phone });
         return res.status(200).json({ user });
     } catch (error: any) {

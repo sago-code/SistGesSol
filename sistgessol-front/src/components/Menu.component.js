@@ -6,6 +6,20 @@ import axios from 'axios';
 
 export function Menu() {
     const [isOpen, setIsOpen] = useState(false);
+    const roleIdStr = localStorage.getItem('roleId');
+    const roleId = roleIdStr ? Number(roleIdStr) : null;
+    const isAdmin = roleId === 1;
+    const menuLinks = isAdmin
+        ? [
+            { to: '/dashboard', label: 'Dashboard' },
+            { to: '/solicitudes', label: 'Solicitudes' },
+            { to: '/perfil', label: 'Gestor usuarios' },
+            { to: '/perfil', label: 'Perfil' },
+          ]
+        : [
+            { to: '/solicitudes', label: 'Solicitudes' },
+            { to: '/perfil', label: 'Perfil' },
+          ];
 
     const handleLogout = async (e) => {
         e.preventDefault();
@@ -30,6 +44,8 @@ export function Menu() {
         } catch (_) {
         } finally {
             localStorage.removeItem('token');
+            localStorage.removeItem('id');
+            localStorage.removeItem('roleId');
             window.location.href = '/login';
         }
     }
@@ -52,12 +68,11 @@ export function Menu() {
 
                 <div className={`collapse navbar-collapse ${isOpen ? 'show' : ''}`} id="navbarNavDropdown">
                     <ul className="navbar-nav ms-auto">
-                        <li className="nav-item">
-                            <Link className="nav-link" to="/solicitudes" onClick={() => setIsOpen(false)}>Solicitudes</Link>
-                        </li>
-                        <li className="nav-item">
-                            <Link className="nav-link" to="/perfil" onClick={() => setIsOpen(false)}>Perfil</Link>
-                        </li>
+                        {menuLinks.map((item) => (
+                            <li className="nav-item" key={item.to}>
+                                <Link className="nav-link" to={item.to} onClick={() => setIsOpen(false)}>{item.label}</Link>
+                            </li>
+                        ))}
                         <li className="nav-item">
                             <a className="nav-link" href="#" onClick={handleLogout}>Cerrar sesión</a>
                         </li>

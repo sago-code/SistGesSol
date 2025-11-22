@@ -100,6 +100,7 @@ export class UserService {
         firstName: string;
         lastName: string;
         email: string;
+        phone: string;
         roleId: number;
         roleName?: string;
     } | null> {
@@ -109,15 +110,20 @@ export class UserService {
             const spResult = await queryRunner.manager.query('CALL sp_get_user_by_id(?)', [id]);
             const firstSet = Array.isArray(spResult) ? spResult[0] : spResult;
             const row = Array.isArray(firstSet) ? firstSet[0] : firstSet;
-            if (!row) return null;
+
+            const createdUser = await queryRunner.manager.findOne(User, { where: { id } });
+            if (!row && !createdUser) return null;
+
+            const phone = String((row && row.phone !== undefined ? row.phone : createdUser?.phone) ?? '');
 
             return {
-                id: row.id ?? row.userId,
-                firstName: row.firstName,
-                lastName: row.lastName,
-                email: row.email,
-                roleId: row.roleId,
-                roleName: row.roleName ?? row.role ?? undefined,
+                id: (row?.id ?? row?.userId ?? createdUser?.id)!,
+                firstName: row?.firstName ?? createdUser?.firstName ?? '',
+                lastName: row?.lastName ?? createdUser?.lastName ?? '',
+                email: row?.email ?? createdUser?.email ?? '',
+                phone,
+                roleId: row?.roleId ?? 0,
+                roleName: row?.roleName ?? row?.role ?? undefined,
             };
         } finally {
             await queryRunner.release();

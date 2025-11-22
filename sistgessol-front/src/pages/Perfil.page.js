@@ -20,7 +20,7 @@ export function Perfil() {
             try {
                 const rawToken = localStorage.getItem('token');
                 const authHeader = rawToken ? (rawToken.startsWith('Bearer ') ? rawToken : `Bearer ${rawToken}`) : null;
-                const config = authHeader ? { headers: { Authorization: authHeader } } : undefined;
+                const config = authHeader ? { headers: { Authorization: authHeader }, params: { t: Date.now() } } : { params: { t: Date.now() } };
                 const res = await axios.get(`${process.env.REACT_APP_API_URL}/users/me`, config);
                 const u = res.data?.user || res.data;
                 setData({
@@ -110,6 +110,9 @@ export function Perfil() {
                     </ol>
                 </nav>
             </div>
+            <header className="per-header">
+                <h1 className="per-title">Perfil</h1>
+            </header>
             <div className="container py-3 perfil-container">
                 {/* Card de perfil */}
                 <div className="card bg-dark text-white perfil-card">

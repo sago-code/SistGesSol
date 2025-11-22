@@ -54,3 +54,12 @@
 .edit-btn.w-100 {
   width: auto !important;
 }
+
+.perfil-card {
+  margin-top: 123px;
+}
+
+.per-header {
+  position: absolute;
+  top: 99px;
+}

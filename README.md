@@ -16,8 +16,8 @@ SistGesSol es una aplicación web que permite a usuarios crear y gestionar solic
 - Backend: Node.js, Express, TypeScript, TypeORM, MySQL, JWT, bcrypt, dotenv, morgan, cors.
 
 ## Documentación detallada
-- Frontend: ver `sistgessol-front/README.md`
-- Backend: ver `sistgessol-back/README.md`
+- Frontend: [sistgessol-front/README.md](sistgessol-front/README.md)
+- Backend: [sistgessol-back/README.md](sistgessol-back/README.md)
 
 También puedes abrir directamente:
 - Frontend: `c:\Users\orjue\OneDrive\Documentos\Santiago\Mis_Cosas\SistGesSol\sistgessol-front\README.md`

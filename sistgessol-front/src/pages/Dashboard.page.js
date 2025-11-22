@@ -94,7 +94,7 @@ export function Dashboard() {
 
     return (
         <Fragment>
-            <h1>Mis estadisticas</h1>
+            <h1>Estadísticas sobre mis solicitudes</h1>
             <div className="container mt-3">
                 {error && <div className="alert alert-danger">{error}</div>}
                 {loading ? (
