@@ -1,0 +1,105 @@
+#root {
+  width: 100%;
+}
+
+.solicitudes-page {
+  width: 100%;
+}
+
+.containerAll {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.solicitudes-page {
+  width: auto;
+  max-width: 100%;
+  padding: 24px 32px;
+}
+
+.sol-header {
+    margin-bottom: 12px;
+    position: absolute;
+    top: 99px;
+    width: 100%;
+    margin-left: 60px;
+}
+
+.sol-title {
+  color: #fff;
+  font-size: 2.4rem;
+  font-weight: 700;
+  text-align: left;
+}
+
+.sol-button {
+  margin-bottom: 16px;
+  width: 106px;
+  display: flex;
+  align-items: center;
+}
+
+.sol-button-wrap {
+  display: flex;
+  flex-direction: row-reverse;
+  margin-right: 30px;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.sol-paginate.pagination {
+    gap: 4px;
+}
+
+.sol-paginate .page-link {
+    color: #cfe9d6;            /* texto claro verdoso */
+    background-color: #2b2b2b; /* fondo oscuro */
+    border-color: #3a3a3a;     /* borde oscuro */
+    border-radius: 6px;
+    padding: 6px 10px;
+    min-width: 36px;
+    text-align: center;
+}
+
+.sol-paginate .page-link:hover {
+    color: #ffffff;
+    background-color: #344b36; /* hover con tinte verde */
+    border-color: #4a4a4a;
+}
+
+.sol-paginate .page-item.active .page-link {
+    color: #0b1a0b;            /* texto oscuro legible */
+    background-color: #28a745; /* acento verde tipo btn-success */
+    border-color: #28a745;
+    font-weight: 600;
+}
+
+.sol-paginate .page-item.disabled .page-link {
+    color: #6c757d;
+    background-color: #222222;
+    border-color: #333333;
+    cursor: not-allowed;
+}
+
+table td,
+table th {
+  padding: 5px;   /* Puedes ajustar el valor */
+}
+
+.input-group {
+  margin-left: 33px;
+}
+
+.breadcrumb-container {
+  position: absolute;
+  top: 63px;
+}
+
+@media(max-width: 755px) {
+  .solicitudes-page {
+    padding: 24px 18px;
+  }
+}
