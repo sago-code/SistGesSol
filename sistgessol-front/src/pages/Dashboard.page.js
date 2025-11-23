@@ -16,12 +16,22 @@ import {
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title);
 
 export function Dashboard() {
+    const roleId = Number(localStorage.getItem('roleId') || 0);
     const [stats, setStats] = useState({
         respondidas: 0,
         enProceso: 0,
         sinRespuesta: 0,
         totalCliente: 0,
         totalGlobal: 0,
+        resueltas: 0,
+        asignadas: 0,
+        cerradas: 0,
+        eficienciaRespuesta: 0,
+        totalRespondidasSoporte: 0,
+        totalSolicitudesSistema: 0,
+        totalRespondidasPeers: 0,
+        asignadasMi: 0,
+        asignadasOtros: 0,
     });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -36,15 +46,12 @@ export function Dashboard() {
                 : null;
             const config = authHeader ? { headers: { Authorization: authHeader } } : undefined;
 
-            const res = await axios.get(`${process.env.REACT_APP_API_URL}/solicitudes/estadisticas/mis`, config);
+            const endpoint = roleId === 2
+                ? `${process.env.REACT_APP_API_URL}/solicitudes/estadisticas/soporte`
+                : `${process.env.REACT_APP_API_URL}/solicitudes/estadisticas/mis`;
+            const res = await axios.get(endpoint, config);
             const data = res.data?.data || res.data;
-            setStats({
-                respondidas: Number(data.respondidas || 0),
-                enProceso: Number(data.enProceso || 0),
-                sinRespuesta: Number(data.sinRespuesta || 0),
-                totalCliente: Number(data.totalCliente || 0),
-                totalGlobal: Number(data.totalGlobal || 0),
-            });
+            setStats(prev => ({ ...prev, ...Object.keys(prev).reduce((acc, k) => ({ ...acc, [k]: Number(data[k] ?? prev[k] ?? 0) }), {}) }));
         } catch (e) {
             const msg = e?.response?.data?.message || e?.response?.data?.error || e?.message || 'Error al cargar estadísticas';
             setError(msg);
@@ -57,8 +64,29 @@ export function Dashboard() {
         fetchStats();
     }, []);
 
-    const pieData = {
-        labels: ['Respondidas', 'En proceso', 'Sin respuesta'],
+    const totalSoporteEstado = (stats.resueltas + stats.asignadas + stats.enProceso + stats.cerradas) || 0;
+    const totalClienteEstado = (stats.respondidas + stats.enProceso + stats.sinRespuesta) || 0;
+    const pct = (v, t) => t > 0 ? `${((v / t) * 100).toFixed(1)}%` : '0%';
+
+    const pieData = roleId === 2 ? {
+        labels: [
+            `Resueltas (${pct(stats.resueltas, totalSoporteEstado)})`,
+            `Asignadas (${pct(stats.asignadas, totalSoporteEstado)})`,
+            `En proceso (${pct(stats.enProceso, totalSoporteEstado)})`,
+            `Cerradas (${pct(stats.cerradas, totalSoporteEstado)})`,
+        ],
+        datasets: [{
+            data: [stats.resueltas, stats.asignadas, stats.enProceso, stats.cerradas],
+            backgroundColor: ['#28a745', '#17a2b8', '#ffc107', '#6c757d'],
+            borderColor: ['#1f7a35', '#117a8b', '#d39e00', '#5a6268'],
+            borderWidth: 1,
+        }],
+    } : {
+        labels: [
+            `Respondidas (${pct(stats.respondidas, totalClienteEstado)})`,
+            `En proceso (${pct(stats.enProceso, totalClienteEstado)})`,
+            `Sin respuesta (${pct(stats.sinRespuesta, totalClienteEstado)})`,
+        ],
         datasets: [{
             data: [stats.respondidas, stats.enProceso, stats.sinRespuesta],
             backgroundColor: ['#28a745', '#ffc107', '#6c757d'],
@@ -66,14 +94,32 @@ export function Dashboard() {
             borderWidth: 1,
         }],
     };
+
     const pieOptions = {
         plugins: {
             legend: { labels: { color: '#ffffff' } },
-            title: { display: true, text: 'Estado de respuestas de soporte', color: '#ffffff' },
+            title: { display: true, text: roleId === 2 ? 'Estado de mis solicitudes de soporte' : 'Estado de respuestas de soporte', color: '#ffffff' },
+            tooltip: {
+                callbacks: {
+                    label: (ctx) => {
+                        const val = ctx.parsed;
+                        const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                        const p = total > 0 ? ((val / total) * 100).toFixed(1) : '0.0';
+                        return `${ctx.label}: ${val} (${p}%)`;
+                    },
+                },
+            },
         },
     };
 
-    const barData = {
+    const barData = roleId === 2 ? {
+        labels: ['Respondidas por mí', 'Total sistema', 'Respondidas por compañeros'],
+        datasets: [{
+            label: 'Cantidad',
+            data: [stats.totalRespondidasSoporte, stats.totalSolicitudesSistema, stats.totalRespondidasPeers],
+            backgroundColor: ['#28a745', '#17a2b8', '#6f42c1'],
+        }],
+    } : {
         labels: ['Mis solicitudes', 'Total del sistema'],
         datasets: [{
             label: 'Cantidad',
@@ -81,10 +127,21 @@ export function Dashboard() {
             backgroundColor: ['#17a2b8', '#28a745'],
         }],
     };
+
     const barOptions = {
         plugins: {
             legend: { labels: { color: '#ffffff' } },
-            title: { display: true, text: 'Comparativa de solicitudes', color: '#ffffff' },
+            title: { display: true, text: roleId === 2 ? 'Respondidas vs sistema' : 'Comparativa de solicitudes', color: '#ffffff' },
+            tooltip: {
+                callbacks: {
+                    label: (ctx) => {
+                        const val = ctx.parsed.y ?? ctx.parsed;
+                        const total = roleId === 2 ? stats.totalSolicitudesSistema : ctx.dataset.data.reduce((a, b) => a + b, 0);
+                        const p = total > 0 ? ((val / total) * 100).toFixed(1) : '0.0';
+                        return `${ctx.dataset.label}: ${val} (${p}%)`;
+                    },
+                },
+            },
         },
         scales: {
             x: { ticks: { color: '#ffffff' }, grid: { color: 'rgba(255,255,255,0.1)' } },
@@ -94,7 +151,7 @@ export function Dashboard() {
 
     return (
         <Fragment>
-            <h1>Estadísticas sobre mis solicitudes</h1>
+            <h1 className="mt-5 mb-4">{roleId === 2 ? 'Estadisiticas de mis soportes' : 'Estadísticas sobre mis solicitudes'}</h1>
             <div className="container mt-3">
                 {error && <div className="alert alert-danger">{error}</div>}
                 {loading ? (
@@ -112,9 +169,48 @@ export function Dashboard() {
                             <div className="card bg-dark text-white border-secondary">
                                 <div className="card-body">
                                     <Bar data={barData} options={barOptions} />
+                                    {roleId === 2 && (
+                                        <div className="mt-2 text-muted">Eficiencia de respuesta: {pct(stats.totalRespondidasSoporte, stats.asignadas)}</div>
+                                    )}
                                 </div>
                             </div>
                         </div>
+                        {roleId === 2 && (
+                            <div className="col-md-6 mb-4">
+                                <div className="card bg-dark text-white border-secondary">
+                                    <div className="card-body">
+                                        <Pie
+                                            data={{
+                                                labels: [
+                                                    `Asignadas a mí (${pct(stats.asignadasMi, stats.asignadasMi + stats.asignadasOtros)})`,
+                                                    `Asignadas a otros (${pct(stats.asignadasOtros, stats.asignadasMi + stats.asignadasOtros)})`,
+                                                ],
+                                                datasets: [{
+                                                    data: [stats.asignadasMi, stats.asignadasOtros],
+                                                    backgroundColor: ['#17a2b8', '#6f42c1'],
+                                                }],
+                                            }}
+                                            options={{
+                                                plugins: {
+                                                    legend: { labels: { color: '#ffffff' } },
+                                                    title: { display: true, text: 'Distribución de asignaciones', color: '#ffffff' },
+                                                    tooltip: {
+                                                        callbacks: {
+                                                            label: (ctx) => {
+                                                                const val = ctx.parsed;
+                                                                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                                                const p = total > 0 ? ((val / total) * 100).toFixed(1) : '0.0';
+                                                                return `${ctx.label}: ${val} (${p}%)`;
+                                                            },
+                                                        },
+                                                    },
+                                                },
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

@@ -169,4 +169,31 @@ export class UserService {
             throw e;
         }
     }
+
+    async changePassword(id: number, currentPassword: string, newPassword: string): Promise<void> {
+        if (!currentPassword || !newPassword) {
+            throw new Error('Contraseña actual y nueva son requeridas');
+        }
+        const repo = Database.getRepository(User);
+        const user = await repo.createQueryBuilder('user')
+            .addSelect('user.password')
+            .where('user.id = :id', { id })
+            .getOne();
+        if (!user) {
+            throw new Error('Usuario no encontrado');
+        }
+        const ok = await bcrypt.compare(currentPassword, user.password);
+        if (!ok) {
+            throw new Error('Contraseña actual incorrecta');
+        }
+        const hasMinLength = typeof newPassword === 'string' && newPassword.length >= 8;
+        const hasUppercase = /[A-Z]/.test(newPassword);
+        const hasSpecial = /[^A-Za-z0-9]/.test(newPassword);
+        if (!hasMinLength || !hasUppercase || !hasSpecial) {
+            throw new Error('La contraseña debe tener al menos 8 caracteres, una mayúscula y un carácter especial');
+        }
+        const hashed = await bcrypt.hash(newPassword, 10);
+        user.password = hashed;
+        await repo.save(user);
+    }
 }

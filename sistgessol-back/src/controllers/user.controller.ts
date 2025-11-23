@@ -74,3 +74,20 @@ export const updateMe = async (req: AuthenticatedRequest, res: Response): Promis
         return res.status(status).json({ message });
     }
 }
+
+export const updateMyPassword = async (req: AuthenticatedRequest, res: Response): Promise<Response> => {
+    const userId = req.userId;
+    if (!userId) {
+        return res.status(401).json({ message: 'No autenticado' });
+    }
+    const { currentPassword, newPassword } = req.body || {};
+    try {
+        res.set('Cache-Control', 'no-store');
+        await new UserService().changePassword(userId, currentPassword, newPassword);
+        return res.status(200).json({ message: 'Contraseña actualizada correctamente' });
+    } catch (error: any) {
+        const message = error?.message || 'Error al actualizar contraseña';
+        const status = /incorrecta|requerida|debe/i.test(message) ? 400 : 500;
+        return res.status(status).json({ message });
+    }
+}

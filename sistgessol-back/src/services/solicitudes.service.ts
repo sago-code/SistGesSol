@@ -1,4 +1,5 @@
 import { Database } from '../database/database';
+import { Solicitud } from '../entities/solicitudes.entity';
 
 export class SolicitudesService {
 
@@ -86,6 +87,9 @@ export class SolicitudesService {
                 soporteId: Number(row.soporteId),
                 oldSoporteId: row.oldSoporteId !== null && typeof row.oldSoporteId !== 'undefined'
                     ? Number(row.oldSoporteId)
+                    : null,
+                clienteId: row.clienteId !== null && typeof row.clienteId !== 'undefined'
+                    ? Number(row.clienteId)
                     : null,
             };
         } catch (error: any) {
@@ -248,6 +252,53 @@ export class SolicitudesService {
             totalCliente: Number(row.totalCliente || 0),
             totalGlobal: Number(row.totalGlobal || 0),
         };
+    }
+
+    async getEstadisticasSoporte(userId: number) {
+        const sql = 'CALL sp_estadisticas_solicitudes_por_soporte(?)';
+        const params = [userId];
+        const result: any = await Database.query(sql, params);
+        let row: any = null;
+        if (Array.isArray(result)) {
+            row = Array.isArray(result[0]) ? result[0][0] : result[0];
+        } else {
+            row = result;
+        }
+        if (!row) {
+            throw new Error('No se pudieron obtener las estadísticas de soporte');
+        }
+        return {
+            resueltas: Number(row.resueltas || 0),
+            asignadas: Number(row.asignadas || 0),
+            enProceso: Number(row.enProceso || 0),
+            cerradas: Number(row.cerradas || 0),
+            eficienciaRespuesta: Number(row.eficienciaRespuesta || 0),
+            totalRespondidasSoporte: Number(row.totalRespondidasSoporte || 0),
+            totalSolicitudesSistema: Number(row.totalSolicitudesSistema || 0),
+            totalRespondidasPeers: Number(row.totalRespondidasPeers || 0),
+            asignadasMi: Number(row.asignadasMi || 0),
+            asignadasOtros: Number(row.asignadasOtros || 0),
+        };
+    }
+
+    async getSolicitudesSoporte(userId: number, page = 1, pageSize = 10, q?: string, filter?: string) {
+        const sql = 'CALL sp_listar_solicitudes_soporte(?, ?, ?, ?, ?)';
+        const offset = (page - 1) * pageSize;
+        const params = [userId, pageSize, offset, q ?? null, filter ?? null];
+        const result: any = await Database.query(sql, params);
+        let rows: any[] = [];
+        if (Array.isArray(result)) {
+            rows = Array.isArray(result[0]) ? result[0] : (result[0] ? [result[0]] : []);
+        } else if (result) {
+            rows = [result];
+        }
+        let total = 0;
+        if (Array.isArray(result) && Array.isArray(result[1]) && result[1][0]) {
+            total = Number(result[1][0].total) || 0;
+        } else if (result?.[1]?.total) {
+            total = Number(result[1].total) || 0;
+        }
+        return { rows, total };
     }
 }
 export const solicitudesService = new SolicitudesService();

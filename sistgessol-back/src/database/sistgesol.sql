@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 22-11-2025 a las 10:39:11
+-- Tiempo de generación: 23-11-2025 a las 05:57:01
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -26,86 +26,90 @@ DELIMITER $$
 -- Procedimientos
 --
 CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_asignar_soporte_solicitud` (IN `p_solicitud_id` INT, IN `p_soporte_id` INT, IN `p_autor_user_id` INT, IN `p_comentario` TEXT, IN `p_estado_code` VARCHAR(30))   BEGIN
-    DECLARE v_msg TEXT;
-    DECLARE v_estado_code VARCHAR(30);
-    DECLARE v_estado_id INT;
-    DECLARE v_old_soporte_id INT;
-    DECLARE v_is_final BOOLEAN;
+  DECLARE v_msg TEXT;
+  DECLARE v_estado_code VARCHAR(30);
+  DECLARE v_estado_id INT;
+  DECLARE v_old_soporte_id INT;
+  DECLARE v_is_final BOOLEAN;
 
-    IF p_solicitud_id IS NULL THEN
-        SET v_msg = 'Debe proporcionar p_solicitud_id';
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = v_msg;
-    END IF;
+  IF p_solicitud_id IS NULL THEN
+    SET v_msg = 'Debe proporcionar p_solicitud_id';
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = v_msg;
+  END IF;
 
-    IF p_soporte_id IS NULL THEN
-        SET v_msg = 'Debe proporcionar p_soporte_id';
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = v_msg;
-    END IF;
+  IF p_soporte_id IS NULL THEN
+    SET v_msg = 'Debe proporcionar p_soporte_id';
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = v_msg;
+  END IF;
 
-    IF p_autor_user_id IS NULL THEN
-        SET v_msg = 'Debe proporcionar p_autor_user_id';
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = v_msg;
-    END IF;
+  IF p_autor_user_id IS NULL THEN
+    SET v_msg = 'Debe proporcionar p_autor_user_id';
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = v_msg;
+  END IF;
 
-    SET v_estado_code = NULLIF(TRIM(p_estado_code), '');
-    IF v_estado_code IS NULL THEN
-        SET v_estado_code = 'ASIGNADA';
-    END IF;
+  SET v_estado_code = NULLIF(TRIM(p_estado_code), '');
+  IF v_estado_code IS NULL THEN
+    SET v_estado_code = 'ASIGNADA';
+  END IF;
 
-    IF NOT EXISTS (SELECT 1 FROM solicitudes WHERE id = p_solicitud_id AND deletedAt IS NULL) THEN
-        SET v_msg = CONCAT('Solicitud ', p_solicitud_id, ' no existe o fue eliminada');
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = v_msg;
-    END IF;
+  IF NOT EXISTS (SELECT 1 FROM solicitudes WHERE id = p_solicitud_id AND deletedAt IS NULL) THEN
+    SET v_msg = CONCAT('Solicitud ', p_solicitud_id, ' no existe o fue eliminada');
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = v_msg;
+  END IF;
 
-    IF NOT EXISTS (SELECT 1 FROM users WHERE id = p_soporte_id AND deletedAt IS NULL) THEN
-        SET v_msg = CONCAT('Soporte ', p_soporte_id, ' no existe o fue eliminado');
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = v_msg;
-    END IF;
+  IF NOT EXISTS (SELECT 1 FROM users WHERE id = p_soporte_id AND deletedAt IS NULL) THEN
+    SET v_msg = CONCAT('Soporte ', p_soporte_id, ' no existe o fue eliminado');
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = v_msg;
+  END IF;
 
-    SELECT id INTO v_estado_id
-    FROM solicitud_estados
-    WHERE code = v_estado_code AND deletedAt IS NULL
-    LIMIT 1;
+  SELECT id INTO v_estado_id
+  FROM solicitud_estados
+  WHERE code = v_estado_code AND deletedAt IS NULL
+  LIMIT 1;
 
-    IF v_estado_id IS NULL THEN
-        SET v_msg = CONCAT('Estado "', v_estado_code, '" no existe en solicitud_estados');
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = v_msg;
-    END IF;
+  IF v_estado_id IS NULL THEN
+    SET v_msg = CONCAT('Estado "', v_estado_code, '" no existe en solicitud_estados');
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = v_msg;
+  END IF;
 
-    START TRANSACTION;
+  START TRANSACTION;
 
-    SELECT s.soporteId, se.isFinal
-      INTO v_old_soporte_id, v_is_final
-    FROM solicitudes s
-    JOIN solicitud_estados se ON se.id = s.estadoId
-    WHERE s.id = p_solicitud_id
-    FOR UPDATE;
+  SELECT s.soporteId, se.isFinal
+    INTO v_old_soporte_id, v_is_final
+  FROM solicitudes s
+  JOIN solicitud_estados se ON se.id = s.estadoId
+  WHERE s.id = p_solicitud_id
+  FOR UPDATE;
 
-    IF v_is_final THEN
-        SET v_msg = 'No se puede asignar soporte: la solicitud está en un estado final';
-        ROLLBACK;
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = v_msg;
-    END IF;
+  IF v_is_final THEN
+    SET v_msg = 'No se puede asignar soporte: la solicitud está en un estado final';
+    ROLLBACK;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = v_msg;
+  END IF;
 
-    UPDATE solicitudes
-       SET soporteId = p_soporte_id,
-           estadoId = v_estado_id,
-           updatedAt = NOW()
-     WHERE id = p_solicitud_id;
+  UPDATE solicitudes
+     SET soporteId = p_soporte_id,
+         estadoId = v_estado_id,
+         updatedAt = NOW()
+   WHERE id = p_solicitud_id;
 
-    INSERT INTO solicitud_historial_estados
-        (solicitudId, estadoId, autorUserId, comentario, soporteId, createdAt, updatedAt)
-    VALUES
-        (p_solicitud_id, v_estado_id, p_autor_user_id, p_comentario, p_soporte_id, NOW(), NOW());
+  INSERT INTO solicitud_historial_estados
+      (solicitudId, estadoId, autorUserId, comentario, soporteId, createdAt, updatedAt)
+  VALUES
+      (p_solicitud_id, v_estado_id, p_autor_user_id, p_comentario, p_soporte_id, NOW(), NOW());
 
-    COMMIT;
+  COMMIT;
 
-    SELECT
-        p_solicitud_id AS solicitudId,
-        v_estado_id AS estadoId,
-        v_estado_code AS estadoCode,
-        p_soporte_id AS soporteId,
-        v_old_soporte_id AS oldSoporteId;
+  SELECT
+    s.id AS solicitudId,
+    v_estado_id AS estadoId,
+    v_estado_code AS estadoCode,
+    s.soporteId AS soporteId,
+    v_old_soporte_id AS oldSoporteId,
+    s.clienteId AS clienteId
+  FROM solicitudes s
+  WHERE s.id = p_solicitud_id
+  LIMIT 1;
 END$$
 
 CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_cambiar_estado_solicitud` (IN `p_solicitud_id` INT, IN `p_estado_code` VARCHAR(30), IN `p_autor_user_id` INT, IN `p_comentario` TEXT, IN `p_respuesta_contenido` TEXT)   BEGIN
@@ -452,17 +456,92 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_estadisticas_solicitudes_por_cli
         v_total_global AS totalGlobal;
 END$$
 
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_estadisticas_solicitudes_por_soporte` (IN `p_user_id` INT)   BEGIN
+  DECLARE v_resueltas INT DEFAULT 0;
+  DECLARE v_asignadas INT DEFAULT 0;
+  DECLARE v_en_proceso INT DEFAULT 0;
+  DECLARE v_cerradas INT DEFAULT 0;
+  DECLARE v_total_resp_soporte INT DEFAULT 0;
+  DECLARE v_total_sistema INT DEFAULT 0;
+  DECLARE v_total_resp_peers INT DEFAULT 0;
+  DECLARE v_asignadas_mi INT DEFAULT 0;
+  DECLARE v_asignadas_otros INT DEFAULT 0;
+  DECLARE v_eficiencia DECIMAL(10,4) DEFAULT 0;
+
+  SELECT COUNT(*) INTO v_resueltas
+  FROM solicitudes s
+  JOIN solicitud_estados se ON se.id = s.estadoId
+  WHERE s.soporteId = p_user_id AND s.deletedAt IS NULL AND se.code = 'RESUELTA';
+
+  SELECT COUNT(*) INTO v_asignadas
+  FROM solicitudes s
+  WHERE s.soporteId = p_user_id AND s.deletedAt IS NULL;
+
+  SELECT COUNT(*) INTO v_en_proceso
+  FROM solicitudes s
+  JOIN solicitud_estados se ON se.id = s.estadoId
+  WHERE s.soporteId = p_user_id AND s.deletedAt IS NULL AND se.code = 'EN_PROCESO';
+
+  SELECT COUNT(*) INTO v_cerradas
+  FROM solicitudes s
+  JOIN solicitud_estados se ON se.id = s.estadoId
+  WHERE s.soporteId = p_user_id AND s.deletedAt IS NULL AND se.code = 'CERRADA';
+
+  SELECT COUNT(*) INTO v_total_resp_soporte
+  FROM solicitud_respuestas sr
+  WHERE sr.autorUserId = p_user_id AND sr.deletedAt IS NULL;
+
+  SELECT COUNT(*) INTO v_total_sistema
+  FROM solicitudes s
+  WHERE s.deletedAt IS NULL;
+
+  SELECT COUNT(*) INTO v_total_resp_peers
+  FROM solicitud_respuestas sr
+  JOIN user_roles ur ON ur.userId = sr.autorUserId AND ur.deletedAt IS NULL
+  JOIN roles r ON r.id = ur.rolId AND r.deletedAt IS NULL
+  WHERE sr.deletedAt IS NULL
+    AND r.name = 'User'
+    AND sr.autorUserId <> p_user_id;
+
+  SELECT COUNT(*) INTO v_asignadas_mi
+  FROM solicitudes s
+  WHERE s.deletedAt IS NULL AND s.soporteId = p_user_id;
+
+  SELECT COUNT(*) INTO v_asignadas_otros
+  FROM solicitudes s
+  WHERE s.deletedAt IS NULL AND s.soporteId IS NOT NULL AND s.soporteId <> p_user_id;
+
+  SET v_eficiencia = IFNULL(v_total_resp_soporte / NULLIF(v_asignadas, 0), 0);
+
+  SELECT
+    v_resueltas AS resueltas,
+    v_asignadas AS asignadas,
+    v_en_proceso AS enProceso,
+    v_cerradas AS cerradas,
+    v_eficiencia AS eficienciaRespuesta,
+    v_total_resp_soporte AS totalRespondidasSoporte,
+    v_total_sistema AS totalSolicitudesSistema,
+    v_total_resp_peers AS totalRespondidasPeers,
+    v_asignadas_mi AS asignadasMi,
+    v_asignadas_otros AS asignadasOtros;
+END$$
+
 CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_get_user_by_id` (IN `p_user_id` INT)   BEGIN
   SELECT 
     u.id,
     u.firstName,
     u.lastName,
     u.email,
-    u.roleId,
+    ur.rolId AS roleId,
     r.name AS roleName
   FROM users u
-  LEFT JOIN roles r ON r.id = u.roleId
+  LEFT JOIN user_roles ur
+    ON ur.userId = u.id
+   AND ur.deletedAt IS NULL
+  LEFT JOIN roles r
+    ON r.id = ur.rolId
   WHERE u.id = p_user_id
+  ORDER BY ur.id ASC
   LIMIT 1;
 END$$
 
@@ -514,6 +593,214 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_listar_solicitudes_por_usuario` 
            OR s.tittle LIKE v_like
            OR s.description LIKE v_like
       );
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_listar_solicitudes_soporte` (IN `p_user_id` INT, IN `p_limit` INT, IN `p_offset` INT, IN `p_q` VARCHAR(255), IN `p_filter` VARCHAR(50))   BEGIN
+  DECLARE v_q VARCHAR(255);
+  DECLARE v_filter VARCHAR(50);
+
+  SET v_q = NULLIF(TRIM(p_q), '');
+  SET v_filter = UPPER(NULLIF(TRIM(p_filter), ''));
+
+  IF v_filter = 'CREADAS' THEN
+    SELECT
+      s.id AS solicitudId,
+      s.tittle AS tittle,
+      s.description AS description,
+      se.code AS estadoCode,
+      s.soporteId AS soporteId,
+      s.clienteId AS clienteId,
+      s.createdAt AS createdAt,
+      s.updatedAt AS updatedAt,
+      COALESCE(
+        (SELECT sr.id FROM solicitud_respuestas sr WHERE sr.solicitudId = s.id AND sr.autorUserId = s.soporteId AND sr.deletedAt IS NULL ORDER BY sr.createdAt DESC LIMIT 1),
+        (SELECT sr2.id FROM solicitud_respuestas sr2 WHERE sr2.solicitudId = s.id AND sr2.deletedAt IS NULL ORDER BY sr2.createdAt DESC LIMIT 1)
+      ) AS respuestaId,
+      COALESCE(
+        (SELECT sr.contenido FROM solicitud_respuestas sr WHERE sr.solicitudId = s.id AND sr.autorUserId = s.soporteId AND sr.deletedAt IS NULL ORDER BY sr.createdAt DESC LIMIT 1),
+        (SELECT sr2.contenido FROM solicitud_respuestas sr2 WHERE sr2.solicitudId = s.id AND sr2.deletedAt IS NULL ORDER BY sr2.createdAt DESC LIMIT 1)
+      ) AS respuestaContenido,
+      COALESCE(
+        (SELECT sr.createdAt FROM solicitud_respuestas sr WHERE sr.solicitudId = s.id AND sr.autorUserId = s.soporteId AND sr.deletedAt IS NULL ORDER BY sr.createdAt DESC LIMIT 1),
+        (SELECT sr2.createdAt FROM solicitud_respuestas sr2 WHERE sr2.solicitudId = s.id AND sr2.deletedAt IS NULL ORDER BY sr2.createdAt DESC LIMIT 1)
+      ) AS respuestaCreatedAt,
+      (SELECT she.comentario FROM solicitud_historial_estados she WHERE she.solicitudId = s.id AND she.deletedAt IS NULL AND she.comentario IS NOT NULL ORDER BY she.createdAt DESC LIMIT 1) AS ultimoComentario
+    FROM solicitudes s
+    JOIN solicitud_estados se ON se.id = s.estadoId
+    WHERE se.code = 'CREADA'
+      AND s.deletedAt IS NULL
+      AND (v_q IS NULL OR s.tittle LIKE CONCAT('%', v_q, '%') OR s.description LIKE CONCAT('%', v_q, '%'))
+    ORDER BY s.createdAt DESC
+    LIMIT p_limit OFFSET p_offset;
+
+    SELECT COUNT(*) AS total
+    FROM solicitudes s
+    JOIN solicitud_estados se ON se.id = s.estadoId
+    WHERE se.code = 'CREADA'
+      AND s.deletedAt IS NULL
+      AND (v_q IS NULL OR s.tittle LIKE CONCAT('%', v_q, '%') OR s.description LIKE CONCAT('%', v_q, '%'));
+
+  ELSEIF v_filter = 'ASIGNADAS_MIAS' THEN
+    SELECT
+      s.id AS solicitudId,
+      s.tittle AS tittle,
+      s.description AS description,
+      se.code AS estadoCode,
+      s.soporteId AS soporteId,
+      s.clienteId AS clienteId,
+      s.createdAt AS createdAt,
+      s.updatedAt AS updatedAt,
+      COALESCE(
+        (SELECT sr.id FROM solicitud_respuestas sr WHERE sr.solicitudId = s.id AND sr.autorUserId = s.soporteId AND sr.deletedAt IS NULL ORDER BY sr.createdAt DESC LIMIT 1),
+        (SELECT sr2.id FROM solicitud_respuestas sr2 WHERE sr2.solicitudId = s.id AND sr2.deletedAt IS NULL ORDER BY sr2.createdAt DESC LIMIT 1)
+      ) AS respuestaId,
+      COALESCE(
+        (SELECT sr.contenido FROM solicitud_respuestas sr WHERE sr.solicitudId = s.id AND sr.autorUserId = s.soporteId AND sr.deletedAt IS NULL ORDER BY sr.createdAt DESC LIMIT 1),
+        (SELECT sr2.contenido FROM solicitud_respuestas sr2 WHERE sr2.solicitudId = s.id AND sr2.deletedAt IS NULL ORDER BY sr2.createdAt DESC LIMIT 1)
+      ) AS respuestaContenido,
+      COALESCE(
+        (SELECT sr.createdAt FROM solicitud_respuestas sr WHERE sr.solicitudId = s.id AND sr.autorUserId = s.soporteId AND sr.deletedAt IS NULL ORDER BY sr.createdAt DESC LIMIT 1),
+        (SELECT sr2.createdAt FROM solicitud_respuestas sr2 WHERE sr2.solicitudId = s.id AND sr2.deletedAt IS NULL ORDER BY sr2.createdAt DESC LIMIT 1)
+      ) AS respuestaCreatedAt,
+      (SELECT she.comentario FROM solicitud_historial_estados she WHERE she.solicitudId = s.id AND she.deletedAt IS NULL AND she.comentario IS NOT NULL ORDER BY she.createdAt DESC LIMIT 1) AS ultimoComentario
+    FROM solicitudes s
+    JOIN solicitud_estados se ON se.id = s.estadoId
+    WHERE s.soporteId = p_user_id
+      AND s.deletedAt IS NULL
+      AND (v_q IS NULL OR s.tittle LIKE CONCAT('%', v_q, '%') OR s.description LIKE CONCAT('%', v_q, '%'))
+    ORDER BY s.createdAt DESC
+    LIMIT p_limit OFFSET p_offset;
+
+    SELECT COUNT(*) AS total
+    FROM solicitudes s
+    JOIN solicitud_estados se ON se.id = s.estadoId
+    WHERE s.soporteId = p_user_id
+      AND s.deletedAt IS NULL
+      AND (v_q IS NULL OR s.tittle LIKE CONCAT('%', v_q, '%') OR s.description LIKE CONCAT('%', v_q, '%'));
+
+  ELSEIF v_filter = 'EN_PROCESO_MIAS' THEN
+    SELECT
+      s.id AS solicitudId,
+      s.tittle AS tittle,
+      s.description AS description,
+      se.code AS estadoCode,
+      s.soporteId AS soporteId,
+      s.clienteId AS clienteId,
+      s.createdAt AS createdAt,
+      s.updatedAt AS updatedAt,
+      COALESCE(
+        (SELECT sr.id FROM solicitud_respuestas sr WHERE sr.solicitudId = s.id AND sr.autorUserId = s.soporteId AND sr.deletedAt IS NULL ORDER BY sr.createdAt DESC LIMIT 1),
+        (SELECT sr2.id FROM solicitud_respuestas sr2 WHERE sr2.solicitudId = s.id AND sr2.deletedAt IS NULL ORDER BY sr2.createdAt DESC LIMIT 1)
+      ) AS respuestaId,
+      COALESCE(
+        (SELECT sr.contenido FROM solicitud_respuestas sr WHERE sr.solicitudId = s.id AND sr.autorUserId = s.soporteId AND sr.deletedAt IS NULL ORDER BY sr.createdAt DESC LIMIT 1),
+        (SELECT sr2.contenido FROM solicitud_respuestas sr2 WHERE sr2.solicitudId = s.id AND sr2.deletedAt IS NULL ORDER BY sr2.createdAt DESC LIMIT 1)
+      ) AS respuestaContenido,
+      COALESCE(
+        (SELECT sr.createdAt FROM solicitud_respuestas sr WHERE sr.solicitudId = s.id AND sr.autorUserId = s.soporteId AND sr.deletedAt IS NULL ORDER BY sr.createdAt DESC LIMIT 1),
+        (SELECT sr2.createdAt FROM solicitud_respuestas sr2 WHERE sr2.solicitudId = s.id AND sr2.deletedAt IS NULL ORDER BY sr2.createdAt DESC LIMIT 1)
+      ) AS respuestaCreatedAt,
+      (SELECT she.comentario FROM solicitud_historial_estados she WHERE she.solicitudId = s.id AND she.deletedAt IS NULL AND she.comentario IS NOT NULL ORDER BY she.createdAt DESC LIMIT 1) AS ultimoComentario
+    FROM solicitudes s
+    JOIN solicitud_estados se ON se.id = s.estadoId
+    WHERE se.code = 'EN_PROCESO'
+      AND s.deletedAt IS NULL
+      AND EXISTS (
+        SELECT 1 FROM solicitud_historial_estados she
+        WHERE she.solicitudId = s.id
+          AND she.estadoId = s.estadoId
+          AND she.autorUserId = p_user_id
+      )
+      AND (v_q IS NULL OR s.tittle LIKE CONCAT('%', v_q, '%') OR s.description LIKE CONCAT('%', v_q, '%'))
+    ORDER BY s.createdAt DESC
+    LIMIT p_limit OFFSET p_offset;
+
+    SELECT COUNT(*) AS total
+    FROM solicitudes s
+    JOIN solicitud_estados se ON se.id = s.estadoId
+    WHERE se.code = 'EN_PROCESO'
+      AND s.deletedAt IS NULL
+      AND EXISTS (
+        SELECT 1 FROM solicitud_historial_estados she
+        WHERE she.solicitudId = s.id
+          AND she.estadoId = s.estadoId
+          AND she.autorUserId = p_user_id
+      )
+      AND (v_q IS NULL OR s.tittle LIKE CONCAT('%', v_q, '%') OR s.description LIKE CONCAT('%', v_q, '%'));
+
+  ELSEIF v_filter = 'RESPONDIDAS_MIAS' THEN
+    SELECT
+      s.id AS solicitudId,
+      s.tittle AS tittle,
+      s.description AS description,
+      se.code AS estadoCode,
+      s.soporteId AS soporteId,
+      s.clienteId AS clienteId,
+      s.createdAt AS createdAt,
+      s.updatedAt AS updatedAt,
+      (SELECT sr.id FROM solicitud_respuestas sr WHERE sr.solicitudId = s.id AND sr.autorUserId = p_user_id AND sr.deletedAt IS NULL ORDER BY sr.createdAt DESC LIMIT 1) AS respuestaId,
+      (SELECT sr.contenido FROM solicitud_respuestas sr WHERE sr.solicitudId = s.id AND sr.autorUserId = p_user_id AND sr.deletedAt IS NULL ORDER BY sr.createdAt DESC LIMIT 1) AS respuestaContenido,
+      (SELECT sr.createdAt FROM solicitud_respuestas sr WHERE sr.solicitudId = s.id AND sr.autorUserId = p_user_id AND sr.deletedAt IS NULL ORDER BY sr.createdAt DESC LIMIT 1) AS respuestaCreatedAt,
+      (SELECT she.comentario FROM solicitud_historial_estados she WHERE she.solicitudId = s.id AND she.deletedAt IS NULL AND she.comentario IS NOT NULL ORDER BY she.createdAt DESC LIMIT 1) AS ultimoComentario
+    FROM solicitudes s
+    JOIN solicitud_estados se ON se.id = s.estadoId
+    WHERE s.deletedAt IS NULL
+      AND EXISTS (
+        SELECT 1 FROM solicitud_respuestas sr
+        WHERE sr.solicitudId = s.id
+          AND sr.autorUserId = p_user_id
+      )
+      AND (v_q IS NULL OR s.tittle LIKE CONCAT('%', v_q, '%') OR s.description LIKE CONCAT('%', v_q, '%'))
+    ORDER BY s.createdAt DESC
+    LIMIT p_limit OFFSET p_offset;
+
+    SELECT COUNT(*) AS total
+    FROM solicitudes s
+    JOIN solicitud_estados se ON se.id = s.estadoId
+    WHERE s.deletedAt IS NULL
+      AND EXISTS (
+        SELECT 1 FROM solicitud_respuestas sr
+        WHERE sr.solicitudId = s.id
+          AND sr.autorUserId = p_user_id
+      )
+      AND (v_q IS NULL OR s.tittle LIKE CONCAT('%', v_q, '%') OR s.description LIKE CONCAT('%', v_q, '%'));
+
+  ELSE
+    SELECT
+      s.id AS solicitudId,
+      s.tittle AS tittle,
+      s.description AS description,
+      se.code AS estadoCode,
+      s.soporteId AS soporteId,
+      s.clienteId AS clienteId,
+      s.createdAt AS createdAt,
+      s.updatedAt AS updatedAt,
+      COALESCE(
+        (SELECT sr.id FROM solicitud_respuestas sr WHERE sr.solicitudId = s.id AND sr.autorUserId = s.soporteId AND sr.deletedAt IS NULL ORDER BY sr.createdAt DESC LIMIT 1),
+        (SELECT sr2.id FROM solicitud_respuestas sr2 WHERE sr2.solicitudId = s.id AND sr2.deletedAt IS NULL ORDER BY sr2.createdAt DESC LIMIT 1)
+      ) AS respuestaId,
+      COALESCE(
+        (SELECT sr.contenido FROM solicitud_respuestas sr WHERE sr.solicitudId = s.id AND sr.autorUserId = s.soporteId AND sr.deletedAt IS NULL ORDER BY sr.createdAt DESC LIMIT 1),
+        (SELECT sr2.contenido FROM solicitud_respuestas sr2 WHERE sr2.solicitudId = s.id AND sr2.deletedAt IS NULL ORDER BY sr2.createdAt DESC LIMIT 1)
+      ) AS respuestaContenido,
+      COALESCE(
+        (SELECT sr.createdAt FROM solicitud_respuestas sr WHERE sr.solicitudId = s.id AND sr.autorUserId = s.soporteId AND sr.deletedAt IS NULL ORDER BY sr.createdAt DESC LIMIT 1),
+        (SELECT sr2.createdAt FROM solicitud_respuestas sr2 WHERE sr2.solicitudId = s.id AND sr2.deletedAt IS NULL ORDER BY sr2.createdAt DESC LIMIT 1)
+      ) AS respuestaCreatedAt,
+      (SELECT she.comentario FROM solicitud_historial_estados she WHERE she.solicitudId = s.id AND she.deletedAt IS NULL AND she.comentario IS NOT NULL ORDER BY she.createdAt DESC LIMIT 1) AS ultimoComentario
+    FROM solicitudes s
+    JOIN solicitud_estados se ON se.id = s.estadoId
+    WHERE s.deletedAt IS NULL
+      AND (v_q IS NULL OR s.tittle LIKE CONCAT('%', v_q, '%') OR s.description LIKE CONCAT('%', v_q, '%'))
+    ORDER BY s.createdAt DESC
+    LIMIT p_limit OFFSET p_offset;
+
+    SELECT COUNT(*) AS total
+    FROM solicitudes s
+    JOIN solicitud_estados se ON se.id = s.estadoId
+    WHERE s.deletedAt IS NULL
+      AND (v_q IS NULL OR s.tittle LIKE CONCAT('%', v_q, '%') OR s.description LIKE CONCAT('%', v_q, '%'));
+  END IF;
 END$$
 
 CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_login_user` (IN `p_email` VARCHAR(255))   BEGIN
@@ -652,7 +939,7 @@ CREATE TABLE `solicitudes` (
 --
 
 INSERT INTO `solicitudes` (`id`, `tittle`, `description`, `estadoId`, `clienteId`, `soporteId`, `createdAt`, `updatedAt`, `deletedAt`) VALUES
-(1, 'instalar driver video', 'necesito que por favor me instalen ese driver en mi pc', 1, 8, NULL, '2025-11-22 08:13:41.000000', '2025-11-22 08:13:41.000000', NULL);
+(1, 'instalar driver video', 'necesito que por favor me instalen ese driver en mi pc', 4, 8, 9, '2025-11-22 08:13:41.000000', '2025-11-23 03:16:31.000000', NULL);
 
 -- --------------------------------------------------------
 
@@ -706,7 +993,10 @@ CREATE TABLE `solicitud_historial_estados` (
 --
 
 INSERT INTO `solicitud_historial_estados` (`id`, `solicitudId`, `estadoId`, `autorUserId`, `comentario`, `soporteId`, `createdAt`, `updatedAt`, `deletedAt`) VALUES
-(1, 1, 1, 8, NULL, NULL, '2025-11-22 08:13:41.000000', '2025-11-22 08:13:41.000000', NULL);
+(1, 1, 1, 8, NULL, NULL, '2025-11-22 08:13:41.000000', '2025-11-22 08:13:41.000000', NULL),
+(2, 1, 2, 9, NULL, 9, '2025-11-23 01:17:39.000000', '2025-11-23 01:17:39.000000', NULL),
+(3, 1, 3, 9, NULL, 9, '2025-11-23 03:15:41.000000', '2025-11-23 03:15:41.000000', NULL),
+(4, 1, 4, 9, 'La pc del usuario quedo con todos los driver actualizados', 9, '2025-11-23 03:16:31.000000', '2025-11-23 03:16:31.000000', NULL);
 
 -- --------------------------------------------------------
 
@@ -723,6 +1013,13 @@ CREATE TABLE `solicitud_respuestas` (
   `updatedAt` timestamp(6) NOT NULL DEFAULT current_timestamp(6) ON UPDATE current_timestamp(6),
   `deletedAt` timestamp(6) NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `solicitud_respuestas`
+--
+
+INSERT INTO `solicitud_respuestas` (`id`, `solicitudId`, `autorUserId`, `contenido`, `createdAt`, `updatedAt`, `deletedAt`) VALUES
+(1, 1, 9, 'Se le instalo el driver al usuario', '2025-11-23 03:16:31.000000', '2025-11-23 03:16:31.000000', NULL);
 
 -- --------------------------------------------------------
 
@@ -760,7 +1057,20 @@ INSERT INTO `token` (`id`, `token`, `createdAt`, `deletedAt`, `userId`) VALUES
 (15, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjgsInJvbGVJZCI6MywiaWF0IjoxNzYzNzg0MzkyLCJleHAiOjE3NjM3ODc5OTJ9.h6xdv3e5lPcqxZZnyNwwufcb__4hdeQD6JdXZcNuE-M', '2025-11-22 04:06:32.044377', NULL, 8),
 (16, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjgsInJvbGVJZCI6MywiaWF0IjoxNzYzNzkwMjE4LCJleHAiOjE3NjM3OTM4MTh9.8vDtkG_Euw09ryw5RAvh5n4mF3qqMsPxrher_Rt5NJA', '2025-11-22 05:43:38.564634', NULL, 8),
 (17, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjgsInJvbGVJZCI6MywiaWF0IjoxNzYzNzk5MTkzLCJleHAiOjE3NjM4MDI3OTN9.BzdJY2R_45puCT0UOTiXbPTOEg4HJ-P7uYaSzlhMtBc', '2025-11-22 08:13:13.073537', NULL, 8),
-(18, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjgsInJvbGVJZCI6MywiaWF0IjoxNzYzODAzNDgwLCJleHAiOjE3NjM4MDcwODB9.K5XpFBUa4oFC65iR-TAo8PEyys9XKvF0EZ4PK5OqT90', '2025-11-22 09:24:40.566601', NULL, 8);
+(18, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjgsInJvbGVJZCI6MywiaWF0IjoxNzYzODAzNDgwLCJleHAiOjE3NjM4MDcwODB9.K5XpFBUa4oFC65iR-TAo8PEyys9XKvF0EZ4PK5OqT90', '2025-11-22 09:24:40.566601', NULL, 8),
+(19, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjgsInJvbGVJZCI6MywiaWF0IjoxNzYzODE5Nzk2LCJleHAiOjE3NjM4MjMzOTZ9.DiemMylckdVmpoiFppdzpIeYkJlPy-i4d1JtY8UNH1A', '2025-11-22 13:56:36.549798', NULL, 8),
+(20, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjgsInJvbGVJZCI6MywiaWF0IjoxNzYzODIzODA5LCJleHAiOjE3NjM4Mjc0MDl9.c79D8julHh-GjDOFhF3WahgUzIUOj2sTEfxXtEABy1s', '2025-11-22 15:03:29.976513', NULL, 8),
+(21, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjgsInJvbGVJZCI6MywiaWF0IjoxNzYzODI3NzkzLCJleHAiOjE3NjM4MzEzOTN9.k6cpY9oIX7vCFJSbnvzsPMAQLLzamy9ky8IrVHr_qTA', '2025-11-22 16:09:53.451096', NULL, 8),
+(22, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjgsInJvbGVJZCI6MywiaWF0IjoxNzYzODMxNDgzLCJleHAiOjE3NjM4MzUwODN9.GZLJISIi3k6cP6372fKi1rhPrnIsb7cu2dlCPaVa5Tw', '2025-11-22 17:11:23.571195', NULL, 8),
+(23, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjgsInJvbGVJZCI6MywiaWF0IjoxNzYzODU2MzU1LCJleHAiOjE3NjM4NTk5NTV9.AEtVfFXcD2KKoqBu9915uRNXyin5sYoItCEgeX43KPs', '2025-11-23 00:05:55.656862', NULL, 8),
+(24, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjksInJvbGVJZCI6MiwiaWF0IjoxNzYzODU4NTk3LCJleHAiOjE3NjM4NjIxOTd9.KYTjDG2GyPuo0kqEWYqL48HCtjv-SIefGZDZC_lj_lI', '2025-11-23 00:43:17.201982', NULL, 9),
+(25, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjksInJvbGVJZCI6MiwiaWF0IjoxNzYzODYzNjgzLCJleHAiOjE3NjM4NjcyODN9.zI7njdNhlnKguAHVervLgZvaN-qbvLJFty1hDh3kfL8', '2025-11-23 02:08:03.856690', NULL, 9),
+(26, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjksInJvbGVJZCI6MiwiaWF0IjoxNzYzODY3NzI0LCJleHAiOjE3NjM4NzEzMjR9.ymv6g2UB9rLi2J93umgaRD0gI3A7Jz3OuRuEzzR5ql4', '2025-11-23 03:15:24.670156', NULL, 9),
+(27, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjksInJvbGVJZCI6MiwiaWF0IjoxNzYzODcyMTA2LCJleHAiOjE3NjM4NzU3MDZ9._3142ZBt_I39xUVoqkt1Y3VK-Ip3383vQCuprtNbK60', '2025-11-23 04:28:26.882565', NULL, 9),
+(28, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjgsInJvbGVJZCI6MywiaWF0IjoxNzYzODczMDQ0LCJleHAiOjE3NjM4NzY2NDR9.X4vPcMAlCcjCTXBONIEOqBtgugfuF9IFlTmAKz5sANM', '2025-11-23 04:44:04.179606', NULL, 8),
+(29, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjksInJvbGVJZCI6MiwiaWF0IjoxNzYzODczMTgyLCJleHAiOjE3NjM4NzY3ODJ9.1AlxDusa8Rw2XIw8J2GbnLHamabBZEK5PbGbqjZ5SXc', '2025-11-23 04:46:22.900685', NULL, 9),
+(30, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjgsInJvbGVJZCI6MywiaWF0IjoxNzYzODczMjc3LCJleHAiOjE3NjM4NzY4Nzd9.cG-AeXKKEVhdhjxU6ZTfDkkXQozXdY6wxC2dKhw1Dk0', '2025-11-23 04:47:57.022343', NULL, 8),
+(31, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjksInJvbGVJZCI6MiwiaWF0IjoxNzYzODczMzUyLCJleHAiOjE3NjM4NzY5NTJ9.a_lvtTVzmUlOQELvnnifjLlqakIT2zFVJ-GCCkApwRw', '2025-11-23 04:49:12.142018', NULL, 9);
 
 -- --------------------------------------------------------
 
@@ -792,7 +1102,8 @@ INSERT INTO `users` (`id`, `firstName`, `lastName`, `email`, `phone`, `password`
 (5, 'Valentina', 'Suarez', 'valentina.suarez+test5@example.com', '1133017788', '$2b$10$YifjdIAqHOZYexkixl6v/u9cXBTjLQloCHpOk7iQZ6ltf9zxRe/OS', '2025-11-20 08:36:59.648106', '2025-11-20 08:36:59.648106', NULL),
 (6, 'Sofía', 'Gómez', 'sofia.gomez+test6@example.com', '1155523344', '$2b$10$dKnEOKTAZ09fWeCIBW1azOzeMcky0b28Btuc6Ooeq2NHzoATMH97O', '2025-11-20 08:48:39.467525', '2025-11-20 08:48:39.467525', NULL),
 (7, 'Santiago', 'Orjuela Vera', 'orjuelasantiago1152002@gmail.com', '2147483647', '$2b$10$tp3PVd08HLkG1HEMgZ2y/eyjPmeS.YjgWNuh/k7vaUeghXAKMh2Pe', '2025-11-21 14:42:40.297925', '2025-11-21 14:42:40.297925', NULL),
-(8, 'pepe', 'turaja', 'pepe@pepillo.com', '345465523', '$2b$10$.rh/Z41MdanLdcbU2prG8uD.YhNdipNOnMBQ4BWY5hJrEXUlGlJZO', '2025-11-21 15:04:36.516720', '2025-11-21 15:04:36.516720', NULL);
+(8, 'pepe', 'turaja', 'pepe@pepillo.com', '434543242', '$2b$10$.rh/Z41MdanLdcbU2prG8uD.YhNdipNOnMBQ4BWY5hJrEXUlGlJZO', '2025-11-21 15:04:36.516720', '2025-11-22 17:20:52.000000', NULL),
+(9, 'soporte', 'prueba', 'soporte@prueba.com', '45635789', '$2b$10$gPjIt8xMnj/hzGSgwYAviecnrQv4qJuUvDA7JW0vWa487FzJIcvfa', '2025-11-23 00:42:34.313785', '2025-11-23 00:42:34.313785', NULL);
 
 -- --------------------------------------------------------
 
@@ -821,7 +1132,8 @@ INSERT INTO `user_roles` (`id`, `createdAt`, `updatedAt`, `deletedAt`, `userId`,
 (5, '2025-11-20 08:36:59.650325', '2025-11-20 08:36:59.650325', NULL, 5, 1),
 (6, '2025-11-20 08:48:39.469457', '2025-11-20 08:48:39.469457', NULL, 6, 2),
 (7, '2025-11-21 14:42:40.298486', '2025-11-21 14:42:40.298486', NULL, 7, 3),
-(8, '2025-11-21 15:04:36.517475', '2025-11-21 15:04:36.517475', NULL, 8, 3);
+(8, '2025-11-21 15:04:36.517475', '2025-11-21 15:04:36.517475', NULL, 8, 3),
+(9, '2025-11-23 00:42:34.316202', '2025-11-23 00:42:34.316202', NULL, 9, 2);
 
 --
 -- Índices para tablas volcadas
@@ -928,31 +1240,31 @@ ALTER TABLE `solicitud_estados`
 -- AUTO_INCREMENT de la tabla `solicitud_historial_estados`
 --
 ALTER TABLE `solicitud_historial_estados`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT de la tabla `solicitud_respuestas`
 --
 ALTER TABLE `solicitud_respuestas`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT de la tabla `token`
 --
 ALTER TABLE `token`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=32;
 
 --
 -- AUTO_INCREMENT de la tabla `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT de la tabla `user_roles`
 --
 ALTER TABLE `user_roles`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- Restricciones para tablas volcadas

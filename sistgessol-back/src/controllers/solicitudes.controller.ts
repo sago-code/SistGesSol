@@ -144,3 +144,29 @@ export const getEstadisticasCliente = async (req: Request, res: Response) => {
         return res.status(400).json({ error: message });
     }
 };
+
+export const getEstadisticasSoporte = async (req: Request, res: Response) => {
+    const userId = (req as any).userId;
+    try {
+        const stats = await solicitudesService.getEstadisticasSoporte(userId);
+        return res.status(200).json({ data: stats });
+    } catch (error: any) {
+        const message = error?.message || 'Error al obtener estadísticas de soporte';
+        return res.status(400).json({ error: message });
+    }
+};
+
+export const getSolicitudesSoporte = async (req: Request, res: Response) => {
+    const userId = (req as any).userId;
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const pageSize = Math.max(1, Math.min(100, parseInt(req.query.pageSize as string) || 10));
+    const q = typeof req.query.q === 'string' ? req.query.q : undefined;
+    const filter = typeof req.query.filter === 'string' ? req.query.filter : undefined;
+    try {
+        const { rows, total } = await solicitudesService.getSolicitudesSoporte(userId, page, pageSize, q, filter);
+        return res.status(200).json({ data: rows, pagination: { total, page, pageSize } });
+    } catch (error: any) {
+        const message = error?.message || 'Error al listar solicitudes (soporte)';
+        return res.status(400).json({ error: message });
+    }
+};

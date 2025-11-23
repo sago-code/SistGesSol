@@ -50,6 +50,13 @@
   justify-content: space-between;
 }
 
+.sol-button-wrap .btn-group .btn {
+  min-width: 100px;
+  white-space: nowrap;
+  font-size: 0.95rem;
+  padding: 6px 12px;
+}
+
 .sol-paginate.pagination {
     gap: 4px;
 }

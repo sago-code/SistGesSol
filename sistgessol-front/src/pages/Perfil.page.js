@@ -2,16 +2,17 @@ import { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import '../styles/perfil.css';
+import { ChangePasswordModal } from '../components/ChangePasswordModal.component';
 
 export function Perfil() {
     const [data, setData] = useState({ id: null, firstName: '', lastName: '', email: '', phone: '', roleId: null });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [edit, setEdit] = useState(false);
     const [form, setForm] = useState({ firstName: '', lastName: '', phone: '' });
     const roleLabel = data.roleId === 1 ? 'Admin' : data.roleId === 2 ? 'Soporte' : 'Cliente';
     const initials = `${(data.firstName || '').charAt(0)}${(data.lastName || '').charAt(0)}`.toUpperCase();
     const [editing, setEditing] = useState(false);
+    const [isPassOpen, setIsPassOpen] = useState(false);
 
     useEffect(() => {
         const fetchMe = async () => {
@@ -83,7 +84,7 @@ export function Perfil() {
                 phone: u?.phone ?? form.phone,
                 roleId: data.roleId,
             });
-            setEdit(false);
+            setEditing(false);
         } catch (e) {
             const msg = e?.response?.data?.message || e?.response?.data?.error || e?.message || 'Error al actualizar perfil';
             setError(msg);
@@ -157,15 +158,24 @@ export function Perfil() {
                             <div className="card bg-dark text-white border-secondary h-100">
                                 <div className="card-header border-secondary d-flex justify-content-between align-items-center">
                                     <span>Datos de la cuenta</span>
-                                    {!edit ? (
-                                        <button
-                                            type="button"
-                                            className="btn btn-success d-inline-flex align-items-center edit-btn"
-                                            onClick={() => setEdit(true)}
-                                            aria-label="Editar"
-                                        >
-                                            <i className="bi bi-pencil"></i>
-                                        </button>
+                                    {!editing ? (
+                                        <div className="d-flex gap-2">
+                                            <button
+                                                type="button"
+                                                className="btn btn-success d-inline-flex align-items-center edit-btn"
+                                                onClick={() => setEditing(true)}
+                                                aria-label="Editar"
+                                            >
+                                                <i className="bi bi-pencil"></i>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="btn btn-secondary d-inline-flex align-items-center"
+                                                onClick={() => setIsPassOpen(true)}
+                                            >
+                                                Cambiar contraseña
+                                            </button>
+                                        </div>
                                     ) : (
                                         <div className="d-flex gap-2">
                                             <button type="button" className="btn btn-success btn-sm" onClick={saveProfile} disabled={loading}>Guardar</button>
@@ -173,7 +183,7 @@ export function Perfil() {
                                                 type="button"
                                                 className="btn btn-secondary btn-sm"
                                                 onClick={() => {
-                                                    setEdit(false);
+                                                    setEditing(false);
                                                     setForm({ firstName: data.firstName, lastName: data.lastName, phone: String(data.phone || '') });
                                                 }}
                                                 disabled={loading}
@@ -195,7 +205,7 @@ export function Perfil() {
                                                     className="form-control bg-dark text-white border-secondary"
                                                     value={form.firstName}
                                                     onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-                                                    disabled={!edit}
+                                                    disabled={!editing}
                                                 />
                                             </div>
                                             <div className="col-md-6">
@@ -205,7 +215,7 @@ export function Perfil() {
                                                     className="form-control bg-dark text-white border-secondary"
                                                     value={form.lastName}
                                                     onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-                                                    disabled={!edit}
+                                                    disabled={!editing}
                                                 />
                                             </div>
                                             <div className="col-md-6">
@@ -219,7 +229,7 @@ export function Perfil() {
                                                     className="form-control bg-dark text-white border-secondary"
                                                     value={form.phone}
                                                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                                                    disabled={!edit}
+                                                    disabled={!editing}
                                                 />
                                             </div>
                                         </form>
@@ -230,6 +240,11 @@ export function Perfil() {
                     </div>
                 </div>
             </div>
+            <ChangePasswordModal
+                isOpen={isPassOpen}
+                onClose={() => setIsPassOpen(false)}
+                onChanged={() => setIsPassOpen(false)}
+            />
         </>
     );
 }
