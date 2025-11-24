@@ -66,12 +66,13 @@ export const changeEstadoSolicitud = async (req: Request, res: Response) => {
     }
 
     try {
+        const normalizedRespuestaContenido = estadoCode === 'CERRADA' ? null : (respuestaContenido ?? null);
         const result = await solicitudesService.changeEstadoSolicitud(
             solicitudId,
             estadoCode as EstadoUnion,
             userId,
             comentario ?? null,
-            respuestaContenido ?? null
+            normalizedRespuestaContenido
         );
         res.status(200).json({ ...result, message: 'Estado actualizado exitosamente' });
     } catch (error: any) {
@@ -156,6 +157,16 @@ export const getEstadisticasSoporte = async (req: Request, res: Response) => {
     }
 };
 
+export const getEstadisticasAdmin = async (req: Request, res: Response) => {
+    try {
+        const stats = await solicitudesService.getEstadisticasAdmin();
+        return res.status(200).json({ data: stats });
+    } catch (error: any) {
+        const message = error?.message || 'Error al obtener estadísticas de admin';
+        return res.status(400).json({ error: message });
+    }
+};
+
 export const getSolicitudesSoporte = async (req: Request, res: Response) => {
     const userId = (req as any).userId;
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
@@ -167,6 +178,29 @@ export const getSolicitudesSoporte = async (req: Request, res: Response) => {
         return res.status(200).json({ data: rows, pagination: { total, page, pageSize } });
     } catch (error: any) {
         const message = error?.message || 'Error al listar solicitudes (soporte)';
+        return res.status(400).json({ error: message });
+    }
+};
+
+export const getSolicitudesAdmin = async (req: Request, res: Response) => {
+    res.set('Cache-Control', 'no-store');
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const pageSize = Math.max(1, Math.min(100, parseInt(req.query.pageSize as string) || 10));
+    const sanitize = (v: any) => {
+        if (typeof v !== 'string') return undefined;
+        const t = v.trim();
+        return t.length ? t : undefined;
+    };
+    const q = sanitize(req.query.q);
+    const estado = sanitize(req.query.estado);
+    const soporte = sanitize(req.query.soporte);
+    const cliente = sanitize(req.query.cliente);
+    const fecha = sanitize(req.query.fecha);
+    try {
+        const { rows, total } = await solicitudesService.getSolicitudesAdmin(page, pageSize, q, estado, soporte, cliente, fecha);
+        return res.status(200).json({ data: rows, pagination: { total, page, pageSize } });
+    } catch (error: any) {
+        const message = error?.message || 'Error al listar solicitudes (admin)';
         return res.status(400).json({ error: message });
     }
 };

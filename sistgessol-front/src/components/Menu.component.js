@@ -13,10 +13,11 @@ export function Menu() {
         ? [
             { to: '/dashboard', label: 'Dashboard' },
             { to: '/solicitudes', label: 'Solicitudes' },
-            { to: '/perfil', label: 'Gestor usuarios' },
+            { to: '/gestor-usuarios', label: 'Gestor usuarios' },
             { to: '/perfil', label: 'Perfil' },
           ]
         : [
+            { to: '/dashboard', label: 'Dashboard' },
             { to: '/solicitudes', label: 'Solicitudes' },
             { to: '/perfil', label: 'Perfil' },
           ];

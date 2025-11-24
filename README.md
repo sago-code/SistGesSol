@@ -10,6 +10,7 @@ SistGesSol es una aplicación web que permite a usuarios crear y gestionar solic
 - Creación de solicitudes; listado paginado y búsqueda.
 - Acciones del cliente: ver detalle, cancelar solicitud y eliminación lógica de canceladas.
 - Dashboard con estadísticas del cliente (respondidas, en proceso, sin respuesta y comparativa con total del sistema).
+- Gestión de usuarios (admin) con filtros, búsqueda y creación/actualización.
 
 ## Tecnologías
 - Frontend: React, React Router, Axios, Bootstrap/Bootstrap Icons, Chart.js, React Chart.js 2, React Paginate.
@@ -26,7 +27,7 @@ También puedes abrir directamente:
 ## Cómo ejecutar (resumen)
 1) Backend API (puerto 4000 por defecto)
    - Instala dependencias
-   - Crea BD MySQL `sistgesol` (usuario `root`)
+   - Crea BD MySQL `sistgesol` (usuario `root`) o importala de `sistgesol-back/src/database/sistgesol.sql`
    - Define `JWT_SECRET` en `.env`
    - Corre migraciones y arranca en modo dev
 

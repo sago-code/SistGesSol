@@ -172,3 +172,25 @@ curl -X POST "http://localhost:4000/auth/logout?id=123" -H "Authorization: Beare
 
 ## Enlaces
 - Frontend README: `../sistgessol-front/README.md`
+
+## Soporte (API)
+- `GET /solicitudes/soporte?page=&pageSize=&q=&filter=`
+  - `filter`: `TODAS|CREADAS|ASIGNADAS_MIAS|EN_PROCESO_MIAS|RESPONDIDAS_MIAS`
+- `POST /solicitudes/:id/asignar`
+  - Body: `{ soporteId, estadoCode?, comentario? }`
+- `POST /solicitudes/:id/estado`
+  - Body: `{ estadoCode: 'EN_PROCESO'|'RESUELTA'|'CERRADA', comentario?, respuestaContenido? }`
+- `GET /solicitudes/estadisticas/soporte`
+  - Respuesta: `{ resueltas, asignadas, enProceso, cerradas, eficienciaRespuesta, totalRespondidasSoporte, totalSolicitudesSistema, totalRespondidasPeers, asignadasMi, asignadasOtros }`
+
+## Admin (API)
+- `GET /solicitudes/admin?page=&pageSize=&q=&estado=&soporte=&cliente=&fecha=`
+  - Filtra por estado, nombre completo de soporte/cliente y fecha (YYYY-MM-DD)
+- `POST /solicitudes/:id/asignar` (asignación por admin)
+- `GET /solicitudes/estadisticas/admin`
+  - Respuesta: `{ creada, asignada, enProceso, resuelta, cerrada, cancelada, respondidasLunes, respondidasMartes, respondidasMiercoles, respondidasJueves, respondidasViernes }`
+
+### Notas de flujo y estados
+- Estados finales: `RESUELTA`, `CERRADA`, `CANCELADA`.
+- `CERRADA` requiere respuesta previa (`respuestaId`).
+- En estados finales se inhabilitan acciones de asignación/cierre según corresponda.

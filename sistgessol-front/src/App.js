@@ -5,6 +5,7 @@ import { Dashboard } from './pages/Dashboard.page';
 import { Menu } from './components/Menu.component';
 import { Solicitudes } from './pages/Solicitudes.page';
 import { Perfil } from './pages/Perfil.page';
+import { GestorUsuarios } from './pages/GestorUsuarios.page';
 
 function RedirectLoggedIn({ children }) {
   const token = localStorage.getItem('token');
@@ -70,6 +71,16 @@ function App() {
             <RequireAuth>
               <ProtectedLayout>
                 <Perfil />
+              </ProtectedLayout>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/gestor-usuarios"
+          element={
+            <RequireAuth>
+              <ProtectedLayout>
+                <GestorUsuarios />
               </ProtectedLayout>
             </RequireAuth>
           }

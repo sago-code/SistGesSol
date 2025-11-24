@@ -1,7 +1,6 @@
 import { Database } from '../database/database';
 import bcrypt from 'bcryptjs';
 import { User } from '../entities/user.entity';
-import { error } from 'console';
 
 export type CreateUserResponse = {
     id: number;
@@ -195,5 +194,27 @@ export class UserService {
         const hashed = await bcrypt.hash(newPassword, 10);
         user.password = hashed;
         await repo.save(user);
+    }
+
+    async listUsersByRole(roleId: number, search?: string, limit = 50, offset = 0): Promise<Array<{ id: number; firstName: string; lastName: string; email: string; phone: string; roleId: number; roleName: string }>> {
+        const sql = 'CALL sp_list_users_by_role(?, ?, ?, ?)';
+        const params = [roleId, (search && search.trim()) ? search.trim() : null, limit, offset];
+        const result: any = await Database.query(sql, params);
+        const set = Array.isArray(result) ? result[0] : result;
+        const list = Array.isArray(set) ? set : (set ? [set] : []);
+        return list.map((r: any) => ({
+            id: Number(r.id), firstName: String(r.firstName), lastName: String(r.lastName),
+            email: String(r.email || ''), phone: String(r.phone || ''), roleId: Number(r.roleId), roleName: String(r.roleName || '')
+        }));
+    }
+
+    async adminUpdateUser(id: number, payload: { firstName?: string; lastName?: string; phone?: string | number; roleId?: number }): Promise<{ id: number; firstName: string; lastName: string; email: string; phone: string; roleId: number }> {
+        const sql = 'CALL sp_update_user_by_admin(?, ?, ?, ?, ?)';
+        const params = [id, payload.firstName ?? null, payload.lastName ?? null, (payload.phone !== undefined ? String(payload.phone) : null), payload.roleId ?? null];
+        const result: any = await Database.query(sql, params);
+        const set = Array.isArray(result) ? result[0] : result;
+        const row = Array.isArray(set) ? set[0] : set;
+        if (!row) { throw new Error('No se pudo actualizar el usuario'); }
+        return { id: Number(row.id), firstName: String(row.firstName), lastName: String(row.lastName), email: String(row.email), phone: String(row.phone), roleId: Number(row.roleId) };
     }
 }

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import '../styles/Solicitudes.css';
 import { CrearSolicitud } from '../components/CrearSolicitud.component';
 import axios from 'axios';
-import * as ReactPaginateModule from 'react-paginate';
+import ReactPaginate from 'react-paginate';
 import { searchService } from '../services/search.service';
 
 export function Solicitudes() {
@@ -32,6 +32,20 @@ export function Solicitudes() {
     const [respondText, setRespondText] = useState('');
     const [respondComment, setRespondComment] = useState('');
 
+    const [adminEstado, setAdminEstado] = useState('');
+    const [adminSoporte, setAdminSoporte] = useState('');
+    const [adminCliente, setAdminCliente] = useState('');
+    const [adminFecha, setAdminFecha] = useState('');
+    const [openEstado, setOpenEstado] = useState(false);
+    const [openSoporte, setOpenSoporte] = useState(false);
+    const [openCliente, setOpenCliente] = useState(false);
+    const [openFecha, setOpenFecha] = useState(false);
+    const [supports, setSupports] = useState([]);
+    const [clients, setClients] = useState([]);
+    const [isAdminAssignOpen, setIsAdminAssignOpen] = useState(false);
+    const [adminAssignId, setAdminAssignId] = useState(null);
+    const [adminAssignSupportId, setAdminAssignSupportId] = useState(null);
+
     const handleOpenCrear = () => setIsCrearOpen(true);
     const handleCloseCrear = () => setIsCrearOpen(false);
 
@@ -44,12 +58,16 @@ export function Solicitudes() {
                 ? (rawToken.startsWith('Bearer ') ? rawToken : `Bearer ${rawToken}`)
                 : null;
 
-            const config = authHeader ? { headers: { Authorization: authHeader } } : undefined;
+            const config = authHeader ? { headers: { Authorization: authHeader } } : {};
             const query = q ? `&q=${encodeURIComponent(q)}` : '';
             const filterParam = roleId === 2 && filter ? `&filter=${encodeURIComponent(filter)}` : '';
+            const adminParams = roleId === 1 ? `&estado=${encodeURIComponent(adminEstado || '')}&soporte=${encodeURIComponent(adminSoporte || '')}&cliente=${encodeURIComponent(adminCliente || '')}&fecha=${encodeURIComponent(adminFecha || '')}` : '';
+            
             const url = roleId === 2
                 ? `${process.env.REACT_APP_API_URL}/solicitudes/soporte?page=${page}&pageSize=${pageSize}${query}${filterParam}`
-                : `${process.env.REACT_APP_API_URL}/solicitudes/mis?page=${page}&pageSize=${pageSize}${query}`;
+                : roleId === 1
+                    ? `${process.env.REACT_APP_API_URL}/solicitudes/admin?page=${page}&pageSize=${pageSize}${query}${adminParams}`
+                    : `${process.env.REACT_APP_API_URL}/solicitudes/mis?page=${page}&pageSize=${pageSize}${query}`;
 
             const res = await axios.get(url, config);
 
@@ -78,17 +96,38 @@ export function Solicitudes() {
     useEffect(() => {
         fetchSolicitudes();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [page, q, filter]);
+    }, [page, q, filter, adminEstado, adminSoporte, adminCliente, adminFecha]);
 
     // Suscripción al servicio compartido (tiempo real)
     useEffect(() => {
         const unsubscribe = searchService.subscribe((newQ) => {
             setQ(newQ);
-            // resetear a primera página al cambiar búsqueda
             setPage(1);
         });
         return unsubscribe;
     }, []);
+
+    useEffect(() => {
+        if (roleId === 1) {
+            const fetchLists = async () => {
+                try {
+                    const rawToken = localStorage.getItem('token');
+                    const authHeader = rawToken
+                        ? (rawToken.startsWith('Bearer ') ? rawToken : `Bearer ${rawToken}`)
+                        : null;
+                    const config = authHeader ? { headers: { Authorization: authHeader } } : {};
+                    
+                    const resSupports = await axios.get(`${process.env.REACT_APP_API_URL}/users?role=2&limit=200`, config);
+                    const resClients = await axios.get(`${process.env.REACT_APP_API_URL}/users?role=3&limit=200`, config);
+                    setSupports(resSupports.data?.data || []);
+                    setClients(resClients.data?.data || []);
+                } catch (error) {
+                    console.error('Error fetching lists:', error);
+                }
+            };
+            fetchLists();
+        }
+    }, [roleId]);
 
     const handleCreated = () => {
         setPage(1);
@@ -103,9 +142,16 @@ export function Solicitudes() {
     const fetchSupportNames = async (solicitudes) => {
         const ids = Array.from(new Set(solicitudes.map(s => s.soporteId).filter(Boolean)));
         const map = {};
+        
+        const rawToken = localStorage.getItem('token');
+        const authHeader = rawToken
+            ? (rawToken.startsWith('Bearer ') ? rawToken : `Bearer ${rawToken}`)
+            : null;
+        const config = authHeader ? { headers: { Authorization: authHeader } } : {};
+        
         await Promise.all(ids.map(async (soporteId) => {
             try {
-                const res = await axios.get(`${process.env.REACT_APP_API_URL}/users/${soporteId}`);
+                const res = await axios.get(`${process.env.REACT_APP_API_URL}/users/${soporteId}`, config);
                 const u = res.data?.user || res.data;
                 map[soporteId] = u ? `${u.firstName} ${u.lastName}` : 'Sin soporte asignado';
             } catch {
@@ -118,9 +164,16 @@ export function Solicitudes() {
     const fetchClientNames = async (solicitudes) => {
         const ids = Array.from(new Set(solicitudes.map(s => s.clienteId).filter(Boolean)));
         const map = {};
+        
+        const rawToken = localStorage.getItem('token');
+        const authHeader = rawToken
+            ? (rawToken.startsWith('Bearer ') ? rawToken : `Bearer ${rawToken}`)
+            : null;
+        const config = authHeader ? { headers: { Authorization: authHeader } } : {};
+        
         await Promise.all(ids.map(async (clienteId) => {
             try {
-                const res = await axios.get(`${process.env.REACT_APP_API_URL}/users/${clienteId}`);
+                const res = await axios.get(`${process.env.REACT_APP_API_URL}/users/${clienteId}`, config);
                 const u = res.data?.user || res.data;
                 map[clienteId] = u ? `${u.firstName} ${u.lastName}` : '—';
             } catch {
@@ -144,16 +197,18 @@ export function Solicitudes() {
         setAssignId(id);
         setIsAssignOpen(true);
     };
+    
     const closeAssign = () => {
         setIsAssignOpen(false);
         setAssignId(null);
     };
+    
     const confirmAssign = async () => {
         if (!assignId) return;
         try {
             const rawToken = localStorage.getItem('token');
             const authHeader = rawToken ? (rawToken.startsWith('Bearer ') ? rawToken : `Bearer ${rawToken}`) : null;
-            const config = authHeader ? { headers: { Authorization: authHeader } } : undefined;
+            const config = authHeader ? { headers: { Authorization: authHeader } } : {};
             await axios.post(`${process.env.REACT_APP_API_URL}/solicitudes/${assignId}/asignar`, { soporteId: userId }, config);
             closeAssign();
             await fetchSolicitudes();
@@ -163,14 +218,22 @@ export function Solicitudes() {
         }
     };
 
-    const openProcess = (id) => { setProcessId(id); setIsProcessOpen(true); };
-    const closeProcess = () => { setIsProcessOpen(false); setProcessId(null); };
+    const openProcess = (id) => { 
+        setProcessId(id); 
+        setIsProcessOpen(true); 
+    };
+    
+    const closeProcess = () => { 
+        setIsProcessOpen(false); 
+        setProcessId(null); 
+    };
+    
     const confirmProcess = async () => {
         if (!processId) return;
         try {
             const rawToken = localStorage.getItem('token');
             const authHeader = rawToken ? (rawToken.startsWith('Bearer ') ? rawToken : `Bearer ${rawToken}`) : null;
-            const config = authHeader ? { headers: { Authorization: authHeader } } : undefined;
+            const config = authHeader ? { headers: { Authorization: authHeader } } : {};
             await axios.post(`${process.env.REACT_APP_API_URL}/solicitudes/${processId}/estado`, { estadoCode: 'EN_PROCESO', comentario: null, respuestaContenido: null }, config);
             closeProcess();
             setRespondId(processId);
@@ -182,14 +245,27 @@ export function Solicitudes() {
         }
     };
 
-    const openRespond = (id) => { setRespondId(id); setIsRespondOpen(true); };
-    const closeRespond = () => { setIsRespondOpen(false); setRespondId(null); setRespondText(''); setRespondComment(''); };
+    const openRespond = (id) => { 
+        setRespondId(id); 
+        setIsRespondOpen(true); 
+    };
+    
+    const closeRespond = () => { 
+        setIsRespondOpen(false); 
+        setRespondId(null); 
+        setRespondText(''); 
+        setRespondComment(''); 
+    };
+    
     const submitRespond = async () => {
-        if (!respondId || !respondText.trim()) { alert('Ingresa una respuesta'); return; }
+        if (!respondId || !respondText.trim()) { 
+            alert('Ingresa una respuesta'); 
+            return; 
+        }
         try {
             const rawToken = localStorage.getItem('token');
             const authHeader = rawToken ? (rawToken.startsWith('Bearer ') ? rawToken : `Bearer ${rawToken}`) : null;
-            const config = authHeader ? { headers: { Authorization: authHeader } } : undefined;
+            const config = authHeader ? { headers: { Authorization: authHeader } } : {};
             await axios.post(`${process.env.REACT_APP_API_URL}/solicitudes/${respondId}/estado`, { estadoCode: 'RESUELTA', comentario: respondComment || null, respuestaContenido: respondText }, config);
             closeRespond();
             setIsAskRespondOpen(false);
@@ -200,14 +276,14 @@ export function Solicitudes() {
         }
     };
 
-    // NUEVO: cancelar y soft-delete
+    // Cancelar y soft-delete
     const handleCancelarSolicitud = async (solicitudId) => {
         const ok = window.confirm('¿Deseas cancelar esta solicitud?');
         if (!ok) return;
         try {
             const rawToken = localStorage.getItem('token');
             const authHeader = rawToken ? (rawToken.startsWith('Bearer ') ? rawToken : `Bearer ${rawToken}`) : null;
-            const config = authHeader ? { headers: { Authorization: authHeader } } : undefined;
+            const config = authHeader ? { headers: { Authorization: authHeader } } : {};
 
             await axios.post(`${process.env.REACT_APP_API_URL}/solicitudes/${solicitudId}/cancelar`, { comentario: null }, config);
             await fetchSolicitudes();
@@ -223,7 +299,7 @@ export function Solicitudes() {
         try {
             const rawToken = localStorage.getItem('token');
             const authHeader = rawToken ? (rawToken.startsWith('Bearer ') ? rawToken : `Bearer ${rawToken}`) : null;
-            const config = authHeader ? { headers: { Authorization: authHeader } } : undefined;
+            const config = authHeader ? { headers: { Authorization: authHeader } } : {};
 
             await axios.post(`${process.env.REACT_APP_API_URL}/solicitudes/${solicitudId}/borrar`, {}, config);
             await fetchSolicitudes();
@@ -237,28 +313,42 @@ export function Solicitudes() {
         try {
             const rawToken = localStorage.getItem('token');
             const authHeader = rawToken ? (rawToken.startsWith('Bearer ') ? rawToken : `Bearer ${rawToken}`) : null;
-            const config = authHeader ? { headers: { Authorization: authHeader } } : undefined;
-            await axios.post(`${process.env.REACT_APP_API_URL}/solicitudes/${solicitudId}/estado`, { estadoCode: 'CERRADA', comentario: null, respuestaContenido: null }, config);
+            const config = authHeader ? { headers: { Authorization: authHeader } } : {};
+            await axios.post(`${process.env.REACT_APP_API_URL}/solicitudes/${solicitudId}/estado`, { estadoCode: 'CERRADA', comentario: 'Cierre de solicitud', respuestaContenido: null }, config);
             await fetchSolicitudes();
         } catch (e) {
             const msg = e?.response?.data?.message || e?.response?.data?.error || e?.message || 'Error al cerrar';
             alert(msg);
         }
     };
+
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-    // NUEVO: handler para ReactPaginate (0-based → 1-based)
+    // Handler para ReactPaginate (0-based → 1-based)
     const handlePageClick = ({ selected }) => {
         setPage(selected + 1);
     };
-    
+
+    // Función para formatear nombres de filtros
+    const formatFilterName = (filter) => {
+        const filterMap = {
+            'TODAS': 'Todas',
+            'CREADAS': 'Creadas',
+            'ASIGNADAS_MIAS': 'Asignadas Mías',
+            'EN_PROCESO_MIAS': 'En Proceso Mías',
+            'RESPONDIDAS_MIAS': 'Respondidas Mías'
+        };
+        return filterMap[filter] || filter;
+    };
+
     return (
         <Fragment>
-            <CrearSolicitudComponent
+            <CrearSolicitud
                 isOpen={isCrearOpen}
                 onClose={handleCloseCrear}
                 onCreated={handleCreated}
             />
+            
             <div className="container mt-2 mb-3 breadcrumb-container">
                 <nav aria-label="breadcrumb">
                     <ol
@@ -271,16 +361,17 @@ export function Solicitudes() {
                         <li className="breadcrumb-item">
                             <Link to="/dashboard" className="link-light text-decoration-none">Dashboard</Link>
                         </li>
-                        <li className="breadcrumb-item active text-white" aria-current="page">Mis solicitudes</li>
+                        <li className="breadcrumb-item active text-white" aria-current="page">{roleId === 1 ? 'Listado de solicitudes' : roleId === 2 ? 'Solicitudes de soporte' : 'Mis solicitudes'}</li>
                     </ol>
                 </nav>
             </div>
+            
             <header className="sol-header">
-                <h1 className="sol-title">Mis Solicitudes</h1>
+                <h1 className="sol-title">{roleId === 1 ? 'Listado de Solicitudes' : roleId === 2 ? 'Solicitudes de Soporte' : 'Mis Solicitudes'}</h1>
             </header>
 
-            <div className="sol-button-wrap d-flex align-items-center gap-2">
-                {roleId !== 2 && (
+            <div className="sol-button-wrap d-flex align-items-center gap-2 flex-wrap">
+                {roleId === 3 && (
                     <button
                         type="button"
                         className="btn btn-success sol-button"
@@ -289,6 +380,7 @@ export function Solicitudes() {
                         Crear Solicitud
                     </button>
                 )}
+                
                 {roleId === 2 && (
                     <div className="btn-group" role="group" aria-label="Filtros soporte">
                         {['TODAS','CREADAS','ASIGNADAS_MIAS','EN_PROCESO_MIAS','RESPONDIDAS_MIAS'].map(f => (
@@ -298,11 +390,100 @@ export function Solicitudes() {
                                 className={`btn btn-${filter===f?'success':'secondary'}`}
                                 onClick={() => { setFilter(f); setPage(1); }}
                             >
-                                {f.replace('_MIAS','').replace('_',' ')}
+                                {formatFilterName(f)}
                             </button>
                         ))}
                     </div>
                 )}
+                
+                {roleId === 1 && (
+                    <Fragment>
+                        <div className="position-relative d-inline-block">
+                            <button className="btn btn-secondary" type="button" onClick={() => { setOpenEstado(v=>!v); setOpenSoporte(false); setOpenCliente(false); setOpenFecha(false); }}>Estado</button>
+                            {openEstado && (
+                                <ul className="bg-dark text-white list-unstyled position-absolute mt-1 p-1 border border-secondary" style={{ maxHeight: '220px', overflowY: 'auto', minWidth: '180px', zIndex: 1040 }}>
+                                    {['','CREADA','ASIGNADA','EN_PROCESO','RESUELTA','CERRADA','CANCELADA'].map(e => (
+                                        <li key={e}>
+                                            <button 
+                                                className="dropdown-item text-white" 
+                                                onClick={() => { setAdminEstado(e); setPage(1); setOpenEstado(false); }}
+                                            >
+                                                {e || 'Todos'}
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                        
+                        <div className="position-relative d-inline-block">
+                            <button className="btn btn-secondary" type="button" onClick={() => { setOpenSoporte(v=>!v); setOpenEstado(false); setOpenCliente(false); setOpenFecha(false); }}>Soporte</button>
+                            {openSoporte && (
+                                <ul className="bg-dark text-white list-unstyled position-absolute mt-1 p-1 border border-secondary" style={{ maxHeight: '220px', overflowY: 'auto', minWidth: '220px', zIndex: 1040 }}>
+                                    <li>
+                                        <button 
+                                            className="dropdown-item text-white" 
+                                            onClick={() => { setAdminSoporte(''); setPage(1); setOpenSoporte(false); }}
+                                        >
+                                            Todos
+                                        </button>
+                                    </li>
+                                    {supports.map(u => (
+                                        <li key={u.id}>
+                                            <button 
+                                                className="dropdown-item text-white" 
+                                                onClick={() => { setAdminSoporte(`${u.firstName} ${u.lastName}`); setPage(1); setOpenSoporte(false); }}
+                                            >
+                                                {u.firstName} {u.lastName}
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                        
+                        <div className="position-relative d-inline-block">
+                            <button className="btn btn-secondary" type="button" onClick={() => { setOpenCliente(v=>!v); setOpenEstado(false); setOpenSoporte(false); setOpenFecha(false); }}>Cliente</button>
+                            {openCliente && (
+                                <ul className="bg-dark text-white list-unstyled position-absolute mt-1 p-1 border border-secondary" style={{ maxHeight: '220px', overflowY: 'auto', minWidth: '220px', zIndex: 1040 }}>
+                                    <li>
+                                        <button 
+                                            className="dropdown-item text-white" 
+                                            onClick={() => { setAdminCliente(''); setPage(1); setOpenCliente(false); }}
+                                        >
+                                            Todos
+                                        </button>
+                                    </li>
+                                    {clients.map(u => (
+                                        <li key={u.id}>
+                                            <button 
+                                                className="dropdown-item text-white" 
+                                                onClick={() => { setAdminCliente(`${u.firstName} ${u.lastName}`); setPage(1); setOpenCliente(false); }}
+                                            >
+                                                {u.firstName} {u.lastName}
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                        
+                        <div className="position-relative d-inline-block">
+                            <button className="btn btn-secondary" type="button" onClick={() => { setOpenFecha(v=>!v); setOpenEstado(false); setOpenSoporte(false); setOpenCliente(false); }}>Fecha</button>
+                            {openFecha && (
+                                <div className="position-absolute mt-1 p-2 bg-dark text-white border border-secondary" style={{ zIndex: 1040 }}>
+                                    <input 
+                                        type="date" 
+                                        className="form-control bg-dark text-white border-secondary" 
+                                        value={adminFecha} 
+                                        onChange={(e) => { setAdminFecha(e.target.value); setPage(1); }} 
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    </Fragment>
+                )}
+                
                 <div className="input-group" style={{ maxWidth: '340px' }}>
                     <span className="input-group-text bg-dark text-white border-secondary">
                         <i className="bi bi-search"></i>
@@ -320,6 +501,7 @@ export function Solicitudes() {
                 </div>
             </div>
 
+            {/* Modal de Detalle */}
             {isDetalleOpen && detalleItem && (
                 <div
                     className="modal show d-block"
@@ -390,7 +572,13 @@ export function Solicitudes() {
                             </div>
                             <div className="modal-footer border-secondary d-flex gap-2">
                                 {roleId === 2 && detalleItem && detalleItem.estadoCode === 'CREADA' && !detalleItem.soporteId && (
-                                    <button type="button" className="btn btn-secondary" onClick={() => openAssign(detalleItem.solicitudId)}>Asignarme</button>
+                                    <button 
+                                        type="button" 
+                                        className="btn btn-secondary" 
+                                        onClick={() => openAssign(detalleItem.solicitudId)}
+                                    >
+                                        Asignarme
+                                    </button>
                                 )}
                                 <button type="button" className="btn btn-success" onClick={closeDetalle}>Cerrar</button>
                             </div>
@@ -398,9 +586,11 @@ export function Solicitudes() {
                     </div>
                 </div>
             )}
-            {/* Backdrop manual, por si no usas JS de Bootstrap */}
+            
+            {/* Backdrop para modal de detalle */}
             {isDetalleOpen && <div className="modal-backdrop show" style={{ zIndex: 1040, backgroundColor: 'rgba(0,0,0,0.6)' }}></div>}
 
+            {/* Modal de Asignación */}
             {isAssignOpen && (
                 <div className="modal show d-block" tabIndex="-1" role="dialog" aria-modal="true" style={{ zIndex: 1055 }}>
                     <div className="modal-dialog modal-sm modal-dialog-centered" role="document">
@@ -422,6 +612,86 @@ export function Solicitudes() {
             )}
             {isAssignOpen && <div className="modal-backdrop show" style={{ zIndex: 1040, backgroundColor: 'rgba(0,0,0,0.6)' }}></div>}
 
+            {/* Modal de Asignación Admin */}
+            {roleId === 1 && isAdminAssignOpen && (
+                <div className="modal show d-block" tabIndex="-1" role="dialog" aria-modal="true" style={{ zIndex: 1055 }}>
+                    <div className="modal-dialog modal-md modal-dialog-centered" role="document">
+                        <div className="modal-content bg-dark text-white border-secondary">
+                            <div className="modal-header border-secondary">
+                                <h5 className="modal-title">Asignar soporte</h5>
+                                <button 
+                                    type="button" 
+                                    className="btn-close btn-close-white" 
+                                    aria-label="Close" 
+                                    onClick={() => { 
+                                        setIsAdminAssignOpen(false); 
+                                        setAdminAssignId(null); 
+                                        setAdminAssignSupportId(null); 
+                                    }}
+                                ></button>
+                            </div>
+                            <div className="modal-body">
+                                <label className="form-label">Selecciona soporte</label>
+                                <select 
+                                    className="form-select bg-dark text-white border-secondary" 
+                                    value={adminAssignSupportId ?? ''} 
+                                    onChange={(e) => setAdminAssignSupportId(Number(e.target.value))}
+                                >
+                                    <option value="">— Seleccionar —</option>
+                                    {supports.map(u => (
+                                        <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="modal-footer border-secondary d-flex gap-2">
+                                <button 
+                                    type="button" 
+                                    className="btn btn-secondary" 
+                                    onClick={() => { 
+                                        setIsAdminAssignOpen(false); 
+                                        setAdminAssignId(null); 
+                                        setAdminAssignSupportId(null); 
+                                    }}
+                                >
+                                    Cancelar
+                                </button>
+                                <button 
+                                    type="button" 
+                                    className="btn btn-success" 
+                                    onClick={async () => {
+                                        if (!adminAssignId || !adminAssignSupportId) { 
+                                            alert('Selecciona un soporte'); 
+                                            return; 
+                                        }
+                                        try {
+                                            const rawToken = localStorage.getItem('token');
+                                            const authHeader = rawToken ? (rawToken.startsWith('Bearer ') ? rawToken : `Bearer ${rawToken}`) : null;
+                                            const config = authHeader ? { headers: { Authorization: authHeader } } : {};
+                                            await axios.post(
+                                                `${process.env.REACT_APP_API_URL}/solicitudes/${adminAssignId}/asignar`, 
+                                                { soporteId: adminAssignSupportId }, 
+                                                config
+                                            );
+                                            setIsAdminAssignOpen(false);
+                                            setAdminAssignId(null);
+                                            setAdminAssignSupportId(null);
+                                            await fetchSolicitudes();
+                                        } catch (e) {
+                                            const msg = e?.response?.data?.message || e?.response?.data?.error || e?.message || 'Error al asignar';
+                                            alert(msg);
+                                        }
+                                    }}
+                                >
+                                    Asignar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {roleId === 1 && isAdminAssignOpen && <div className="modal-backdrop show" style={{ zIndex: 1040, backgroundColor: 'rgba(0,0,0,0.6)' }}></div>}
+
+            {/* Modal de Proceso */}
             {isProcessOpen && (
                 <div className="modal show d-block" tabIndex="-1" role="dialog" aria-modal="true" style={{ zIndex: 1055 }}>
                     <div className="modal-dialog modal-sm modal-dialog-centered" role="document">
@@ -443,6 +713,7 @@ export function Solicitudes() {
             )}
             {isProcessOpen && <div className="modal-backdrop show" style={{ zIndex: 1040, backgroundColor: 'rgba(0,0,0,0.6)' }}></div>}
 
+            {/* Modal de Pregunta Responder */}
             {isAskRespondOpen && (
                 <div className="modal show d-block" tabIndex="-1" role="dialog" aria-modal="true" style={{ zIndex: 1055 }}>
                     <div className="modal-dialog modal-sm modal-dialog-centered" role="document">
@@ -456,7 +727,16 @@ export function Solicitudes() {
                             </div>
                             <div className="modal-footer border-secondary d-flex gap-2">
                                 <button type="button" className="btn btn-secondary" onClick={() => setIsAskRespondOpen(false)}>No</button>
-                                <button type="button" className="btn btn-success" onClick={() => { setIsAskRespondOpen(false); openRespond(respondId); }}>Sí</button>
+                                <button 
+                                    type="button" 
+                                    className="btn btn-success" 
+                                    onClick={() => { 
+                                        setIsAskRespondOpen(false); 
+                                        openRespond(respondId); 
+                                    }}
+                                >
+                                    Sí
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -464,6 +744,7 @@ export function Solicitudes() {
             )}
             {isAskRespondOpen && <div className="modal-backdrop show" style={{ zIndex: 1040, backgroundColor: 'rgba(0,0,0,0.6)' }}></div>}
 
+            {/* Modal de Responder */}
             {isRespondOpen && (
                 <div className="modal show d-block" tabIndex="-1" role="dialog" aria-modal="true" style={{ zIndex: 1055 }}>
                     <div className="modal-dialog modal-lg modal-dialog-centered" role="document">
@@ -475,11 +756,22 @@ export function Solicitudes() {
                             <div className="modal-body">
                                 <div className="mb-3">
                                     <label className="form-label">Respuesta</label>
-                                    <textarea className="form-control bg-dark text-white border-secondary" rows="4" value={respondText} onChange={(e) => setRespondText(e.target.value)} required></textarea>
+                                    <textarea 
+                                        className="form-control bg-dark text-white border-secondary" 
+                                        rows="4" 
+                                        value={respondText} 
+                                        onChange={(e) => setRespondText(e.target.value)} 
+                                        required
+                                    ></textarea>
                                 </div>
                                 <div className="mb-3">
                                     <label className="form-label">Comentario (opcional)</label>
-                                    <input type="text" className="form-control bg-dark text-white border-secondary" value={respondComment} onChange={(e) => setRespondComment(e.target.value)} />
+                                    <input 
+                                        type="text" 
+                                        className="form-control bg-dark text-white border-secondary" 
+                                        value={respondComment} 
+                                        onChange={(e) => setRespondComment(e.target.value)} 
+                                    />
                                 </div>
                             </div>
                             <div className="modal-footer border-secondary d-flex gap-2">
@@ -537,6 +829,7 @@ export function Solicitudes() {
                                                     >
                                                         <i className="bi bi-eye"></i>
                                                     </button>
+                                                    
                                                     {roleId === 2 ? (
                                                         <>
                                                             {!r.soporteId && (
@@ -571,7 +864,7 @@ export function Solicitudes() {
                                                             )}
                                                         </>
                                                     ) : (
-                                                        r.estadoCode === 'RESUELTA' ? (
+                                                        (r.estadoCode === 'RESUELTA' && !!r.respuestaId) ? (
                                                             <button
                                                                 type="button"
                                                                 className="btn btn-outline-success"
@@ -589,6 +882,14 @@ export function Solicitudes() {
                                                             >
                                                                 <i className="bi bi-trash"></i>
                                                             </button>
+                                                        ) : r.estadoCode === 'CERRADA' ? (
+                                                            <span className="btn btn-outline-secondary disabled" title="Solicitud cerrada">
+                                                                <i className="bi bi-lock"></i>
+                                                            </span>
+                                                        ) : r.estadoCode === 'RESUELTA' ? (
+                                                            <span className="btn btn-outline-secondary disabled" title="Solicitud resuelta">
+                                                                <i className="bi bi-check2"></i>
+                                                            </span>
                                                         ) : (
                                                             <button
                                                                 type="button"
@@ -597,6 +898,29 @@ export function Solicitudes() {
                                                                 title="Cancelar solicitud"
                                                             >
                                                                 <i className="bi bi-x-circle"></i>
+                                                            </button>
+                                                        )
+                                                    )}
+                                                    
+                                                    {roleId === 1 && (
+                                                        (r.estadoCode === 'RESUELTA' || r.estadoCode === 'CERRADA') ? (
+                                                            <span
+                                                                className="btn btn-outline-secondary disabled"
+                                                                title="No asignable en estado final"
+                                                            >
+                                                                <i className="bi bi-person-plus"></i>
+                                                            </span>
+                                                        ) : (
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-outline-success"
+                                                                onClick={() => { 
+                                                                    setAdminAssignId(r.solicitudId); 
+                                                                    setIsAdminAssignOpen(true); 
+                                                                }}
+                                                                title="Asignar soporte"
+                                                            >
+                                                                <i className="bi bi-person-plus"></i>
                                                             </button>
                                                         )
                                                     )}
@@ -612,10 +936,10 @@ export function Solicitudes() {
                                 </tbody>
                             </table>
 
-                            {/* Paginación (ReactPaginate con estilo) */}
+                            {/* Paginación */}
                             <div className="d-flex align-items-center mt-3">
-                                <div className="me-2">Páginas ({totalPages}):</div>
-                                <ReactPaginateComponent
+                                <div className="me-2 text-white">Páginas ({totalPages}):</div>
+                                <ReactPaginate
                                     previousLabel="« Anterior"
                                     nextLabel="Siguiente »"
                                     breakLabel="..."
@@ -642,12 +966,5 @@ export function Solicitudes() {
                 </div>
             </div>
         </Fragment>
-    )
+    );
 }
-
-const CrearSolicitudComponent =
-    CrearSolicitud && (typeof CrearSolicitud === 'function' || typeof CrearSolicitud === 'object')
-        ? CrearSolicitud
-        : () => null;
-
-const ReactPaginateComponent = ReactPaginateModule.default || ReactPaginateModule;

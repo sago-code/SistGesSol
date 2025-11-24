@@ -32,6 +32,15 @@ export function Dashboard() {
         totalRespondidasPeers: 0,
         asignadasMi: 0,
         asignadasOtros: 0,
+        creada: 0,
+        asignada: 0,
+        resuelta: 0,
+        cancelada: 0,
+        respondidasLunes: 0,
+        respondidasMartes: 0,
+        respondidasMiercoles: 0,
+        respondidasJueves: 0,
+        respondidasViernes: 0,
     });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -46,9 +55,11 @@ export function Dashboard() {
                 : null;
             const config = authHeader ? { headers: { Authorization: authHeader } } : undefined;
 
-            const endpoint = roleId === 2
-                ? `${process.env.REACT_APP_API_URL}/solicitudes/estadisticas/soporte`
-                : `${process.env.REACT_APP_API_URL}/solicitudes/estadisticas/mis`;
+            const endpoint = roleId === 1
+                ? `${process.env.REACT_APP_API_URL}/solicitudes/estadisticas/admin`
+                : roleId === 2
+                    ? `${process.env.REACT_APP_API_URL}/solicitudes/estadisticas/soporte`
+                    : `${process.env.REACT_APP_API_URL}/solicitudes/estadisticas/mis`;
             const res = await axios.get(endpoint, config);
             const data = res.data?.data || res.data;
             setStats(prev => ({ ...prev, ...Object.keys(prev).reduce((acc, k) => ({ ...acc, [k]: Number(data[k] ?? prev[k] ?? 0) }), {}) }));
@@ -151,65 +162,129 @@ export function Dashboard() {
 
     return (
         <Fragment>
-            <h1 className="mt-5 mb-4">{roleId === 2 ? 'Estadisiticas de mis soportes' : 'Estadísticas sobre mis solicitudes'}</h1>
+            <h1 className="mt-6 mb-4">{roleId === 2 ? 'Estadísticas de mis soportes' : roleId === 1 ? 'Dashboard de Admin' : 'Estadísticas sobre mis solicitudes'}</h1>
             <div className="container mt-3">
                 {error && <div className="alert alert-danger">{error}</div>}
                 {loading ? (
                     <div className="text-white">Cargando estadísticas...</div>
                 ) : (
                     <div className="row">
-                        <div className="col-md-6 mb-4">
-                            <div className="card bg-dark text-white border-secondary">
-                                <div className="card-body">
-                                    <Pie data={pieData} options={pieOptions} />
-                                </div>
-                            </div>
-                        </div>
-                        <div className="col-md-6 mb-4">
-                            <div className="card bg-dark text-white border-secondary">
-                                <div className="card-body">
-                                    <Bar data={barData} options={barOptions} />
-                                    {roleId === 2 && (
-                                        <div className="mt-2 text-muted">Eficiencia de respuesta: {pct(stats.totalRespondidasSoporte, stats.asignadas)}</div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                        {roleId === 2 && (
-                            <div className="col-md-6 mb-4">
-                                <div className="card bg-dark text-white border-secondary">
-                                    <div className="card-body">
-                                        <Pie
-                                            data={{
-                                                labels: [
-                                                    `Asignadas a mí (${pct(stats.asignadasMi, stats.asignadasMi + stats.asignadasOtros)})`,
-                                                    `Asignadas a otros (${pct(stats.asignadasOtros, stats.asignadasMi + stats.asignadasOtros)})`,
-                                                ],
-                                                datasets: [{
-                                                    data: [stats.asignadasMi, stats.asignadasOtros],
-                                                    backgroundColor: ['#17a2b8', '#6f42c1'],
-                                                }],
-                                            }}
-                                            options={{
-                                                plugins: {
-                                                    legend: { labels: { color: '#ffffff' } },
-                                                    title: { display: true, text: 'Distribución de asignaciones', color: '#ffffff' },
-                                                    tooltip: {
-                                                        callbacks: {
-                                                            label: (ctx) => {
-                                                                const val = ctx.parsed;
-                                                                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
-                                                                const p = total > 0 ? ((val / total) * 100).toFixed(1) : '0.0';
-                                                                return `${ctx.label}: ${val} (${p}%)`;
-                                                            },
-                                                        },
+                        {roleId === 1 ? (
+                            <Fragment>
+                                <div className="col-md-6 mb-4">
+                                    <div className="card bg-dark text-white border-secondary">
+                                        <div className="card-body">
+                                            <Pie
+                                                data={{
+                                                    labels: ['CREADA', 'ASIGNADA', 'EN_PROCESO', 'RESUELTA', 'CERRADA', 'CANCELADA'],
+                                                    datasets: [{
+                                                        data: [stats.creada, stats.asignada, stats.enProceso, stats.resuelta, stats.cerrada, stats.cancelada],
+                                                        backgroundColor: ['#6c757d', '#17a2b8', '#ffc107', '#28a745', '#6610f2', '#dc3545'],
+                                                        borderColor: ['#5a6268', '#117a8b', '#d39e00', '#1f7a35', '#520dc2', '#c82333'],
+                                                        borderWidth: 1,
+                                                    }],
+                                                }}
+                                                options={{
+                                                    plugins: {
+                                                        legend: { labels: { color: '#ffffff' } },
+                                                        title: { display: true, text: 'Estados globales de solicitudes', color: '#ffffff' },
                                                     },
-                                                },
-                                            }}
-                                        />
+                                                }}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                                <div className="col-md-6 mb-4">
+                                    <div className="card bg-dark text-white border-secondary">
+                                        <div className="card-body">
+                                            <Bar
+                                                data={{
+                                                    labels: ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'],
+                                                    datasets: [{
+                                                        label: 'Respondidas semana',
+                                                        data: [stats.respondidasLunes, stats.respondidasMartes, stats.respondidasMiercoles, stats.respondidasJueves, stats.respondidasViernes],
+                                                        backgroundColor: '#17a2b8',
+                                                    }],
+                                                }}
+                                                options={barOptions}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="col-md-6 mb-4">
+                                    <div className="card bg-dark text-white border-secondary">
+                                        <div className="card-body">
+                                            <Bar
+                                                data={{
+                                                    labels: ['Canceladas', 'Resueltas', 'Cerradas'],
+                                                    datasets: [{
+                                                        label: 'Cantidad',
+                                                        data: [stats.cancelada, stats.resuelta, stats.cerrada],
+                                                        backgroundColor: ['#dc3545', '#28a745', '#6610f2'],
+                                                    }],
+                                                }}
+                                                options={barOptions}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </Fragment>
+                        ) : (
+                            <Fragment>
+                                <div className="col-md-6 mb-4">
+                                    <div className="card bg-dark text-white border-secondary">
+                                        <div className="card-body">
+                                            <Pie data={pieData} options={pieOptions} />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="col-md-6 mb-4">
+                                    <div className="card bg-dark text-white border-secondary">
+                                        <div className="card-body">
+                                            <Bar data={barData} options={barOptions} />
+                                            {roleId === 2 && (
+                                                <div className="mt-2 text-muted">Eficiencia de respuesta: {pct(stats.totalRespondidasSoporte, stats.asignadas)}</div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                                {roleId === 2 && (
+                                    <div className="col-md-6 mb-4">
+                                        <div className="card bg-dark text-white border-secondary">
+                                            <div className="card-body">
+                                                <Pie
+                                                    data={{
+                                                        labels: [
+                                                            `Asignadas a mí (${pct(stats.asignadasMi, stats.asignadasMi + stats.asignadasOtros)})`,
+                                                            `Asignadas a otros (${pct(stats.asignadasOtros, stats.asignadasMi + stats.asignadasOtros)})`,
+                                                        ],
+                                                        datasets: [{
+                                                            data: [stats.asignadasMi, stats.asignadasOtros],
+                                                            backgroundColor: ['#17a2b8', '#6f42c1'],
+                                                        }],
+                                                    }}
+                                                    options={{
+                                                        plugins: {
+                                                            legend: { labels: { color: '#ffffff' } },
+                                                            title: { display: true, text: 'Distribución de asignaciones', color: '#ffffff' },
+                                                            tooltip: {
+                                                                callbacks: {
+                                                                    label: (ctx) => {
+                                                                        const val = ctx.parsed;
+                                                                        const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                                                        const p = total > 0 ? ((val / total) * 100).toFixed(1) : '0.0';
+                                                                        return `${ctx.label}: ${val} (${p}%)`;
+                                                                    },
+                                                                },
+                                                            },
+                                                        },
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </Fragment>
                         )}
                     </div>
                 )}

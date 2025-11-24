@@ -281,10 +281,58 @@ export class SolicitudesService {
         };
     }
 
+    async getEstadisticasAdmin() {
+        const sql = 'CALL sp_estadisticas_solicitudes_admin()';
+        const result: any = await Database.query(sql, []);
+        let row: any = null;
+        if (Array.isArray(result)) {
+            row = Array.isArray(result[0]) ? result[0][0] : result[0];
+        } else {
+            row = result;
+        }
+        if (!row) {
+            throw new Error('No se pudieron obtener las estadísticas de admin');
+        }
+        return {
+            creada: Number(row.creada || 0),
+            asignada: Number(row.asignada || 0),
+            enProceso: Number(row.enProceso || 0),
+            resuelta: Number(row.resuelta || 0),
+            cerrada: Number(row.cerrada || 0),
+            cancelada: Number(row.cancelada || 0),
+            respondidasLunes: Number(row.respondidasLunes || 0),
+            respondidasMartes: Number(row.respondidasMartes || 0),
+            respondidasMiercoles: Number(row.respondidasMiercoles || 0),
+            respondidasJueves: Number(row.respondidasJueves || 0),
+            respondidasViernes: Number(row.respondidasViernes || 0),
+        };
+    }
+
     async getSolicitudesSoporte(userId: number, page = 1, pageSize = 10, q?: string, filter?: string) {
         const sql = 'CALL sp_listar_solicitudes_soporte(?, ?, ?, ?, ?)';
         const offset = (page - 1) * pageSize;
         const params = [userId, pageSize, offset, q ?? null, filter ?? null];
+        const result: any = await Database.query(sql, params);
+        let rows: any[] = [];
+        if (Array.isArray(result)) {
+            rows = Array.isArray(result[0]) ? result[0] : (result[0] ? [result[0]] : []);
+        } else if (result) {
+            rows = [result];
+        }
+        let total = 0;
+        if (Array.isArray(result) && Array.isArray(result[1]) && result[1][0]) {
+            total = Number(result[1][0].total) || 0;
+        } else if (result?.[1]?.total) {
+            total = Number(result[1].total) || 0;
+        }
+        return { rows, total };
+    }
+
+    async getSolicitudesAdmin(page = 1, pageSize = 10, q?: string, estado?: string, soporte?: string, cliente?: string, fecha?: string) {
+        const sql = 'CALL sp_listar_solicitudes_admin(?, ?, ?, ?, ?, ?, ?)';
+        const offset = (page - 1) * pageSize;
+        const norm = (v?: string) => (typeof v === 'string' && v.trim().length ? v.trim() : null);
+        const params = [pageSize, offset, norm(q), norm(estado), norm(soporte), norm(cliente), norm(fecha)];
         const result: any = await Database.query(sql, params);
         let rows: any[] = [];
         if (Array.isArray(result)) {

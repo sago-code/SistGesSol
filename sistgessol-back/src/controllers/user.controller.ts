@@ -58,6 +58,23 @@ export const getMe = async (req: AuthenticatedRequest, res: Response): Promise<R
     }
 }
 
+export const listUsers = async (req: Request, res: Response): Promise<Response> => {
+    const roleId = parseInt(req.query.role as string);
+    const search = typeof req.query.search === 'string' ? req.query.search : undefined;
+    const limit = Math.max(1, Math.min(200, parseInt(req.query.limit as string) || 50));
+    const offset = Math.max(0, parseInt(req.query.offset as string) || 0);
+    if (!roleId || Number.isNaN(roleId)) {
+        return res.status(400).json({ message: 'Parámetro role inválido' });
+    }
+    try {
+        const rows = await new UserService().listUsersByRole(roleId, search, limit, offset);
+        return res.status(200).json({ data: rows });
+    } catch (error: any) {
+        const message = error?.message || 'Error al listar usuarios';
+        return res.status(500).json({ message });
+    }
+}
+
 export const updateMe = async (req: AuthenticatedRequest, res: Response): Promise<Response> => {
     const userId = req.userId;
     if (!userId) {
@@ -88,6 +105,22 @@ export const updateMyPassword = async (req: AuthenticatedRequest, res: Response)
     } catch (error: any) {
         const message = error?.message || 'Error al actualizar contraseña';
         const status = /incorrecta|requerida|debe/i.test(message) ? 400 : 500;
+        return res.status(status).json({ message });
+    }
+}
+
+export const updateUserByAdmin = async (req: Request, res: Response): Promise<Response> => {
+    const id = Number(req.params.id);
+    if (!id || Number.isNaN(id) || id <= 0) {
+        return res.status(400).json({ message: 'ID de usuario inválido' });
+    }
+    const { firstName, lastName, phone, roleId } = req.body || {};
+    try {
+        const user = await new UserService().adminUpdateUser(id, { firstName, lastName, phone, roleId });
+        return res.status(200).json({ user });
+    } catch (error: any) {
+        const message = error?.message || 'Error al actualizar usuario';
+        const status = error?.code === 'ER_DUP_ENTRY' ? 400 : 500;
         return res.status(status).json({ message });
     }
 }

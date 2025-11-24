@@ -70,12 +70,6 @@ Abre `http://localhost:3000`.
 - Se muestra breadcrumb superior consistente (ej. “Dashboard > Perfil” o “Dashboard > Mis solicitudes”).
 - Ajustado para ser visible en mobile, minimizando padding/margins del contenedor superior.
 
-## Pruebas
-Arranca el runner interactivo:
-```bash
-npm test
-```
-
 ## Consideraciones de UX
 - Tema oscuro consistente.
 - Botones con iconos de Bootstrap (ej. lápiz para editar).
@@ -88,3 +82,19 @@ npm test
 
 ## Enlaces
 - Backend README: `../sistgessol-back/README.md`
+
+## Cliente (UI)
+- Mis solicitudes: listado paginado con búsqueda y detalle modal.
+- Acciones: crear solicitud, cancelar solicitud (no disponible en estados finales), eliminar (soft delete) solo en canceladas.
+- Dashboard cliente: pie (respondidas, en proceso, sin respuesta) y barras comparativas (mis solicitudes vs total del sistema).
+
+## Soporte (UI)
+- Listado con filtros: `TODAS`, `CREADAS`, `ASIGNADAS_MIAS`, `EN_PROCESO_MIAS`, `RESPONDIDAS_MIAS`.
+- Acciones: asignarse, poner en proceso, responder (modal), cerrar (cuando hay respuesta).
+- Dashboard de soporte: pie (resueltas/asignadas/en proceso/cerradas), barras comparativas y pie de asignaciones.
+
+## Admin (UI)
+- Listado global con filtros de `estado`, `soporte`, `cliente`, `fecha` (dropdowns con scroll y calendario).
+- Asignar soporte: modal con selección de soporte; en estados `RESUELTA` y `CERRADA` se inhabilita asignar.
+- Dashboard admin: gráficos de estados globales (pie), respondidas por días (barras L-V), y canceladas vs resueltas vs cerradas (barras).
+- Gestor de Usuarios: buscador a la izquierda, filtro “Tipo de Usuario” al lado y botón compacto “Crear Usuario” a la derecha; modales de crear/actualizar y ver usuario en tema oscuro.
