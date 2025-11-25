@@ -16,7 +16,6 @@ body {
   background: #25252b;
 }
 
-/* scopear el login para no chocar con Bootstrap */
 .container.auth-container {
   position: relative;
   width: 750px;

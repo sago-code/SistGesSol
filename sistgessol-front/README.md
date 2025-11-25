@@ -37,7 +37,10 @@ REACT_APP_API_URL = http://localhost:4000
 
 ## Instalación
 ```bash
-cd c:\Users\orjue\OneDrive\Documentos\Santiago\Mis_Cosas\SistGesSol\sistgessol-front
+git clone https://github.com/sago-code/sistgessol-front.git
+```
+```bash
+cd sistgessol-front
 ```
 
 ```bash

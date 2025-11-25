@@ -11,7 +11,7 @@ export const searchService = {
     },
     subscribe(cb) {
         listeners.add(cb);
-        // emitir estado actual al suscribirse
+        // emite estado actual al suscribirse
         try { cb(query); } catch {}
         return () => listeners.delete(cb);
     },
