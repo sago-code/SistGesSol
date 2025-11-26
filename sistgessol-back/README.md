@@ -46,7 +46,7 @@ c:\Users\orjue\OneDrive\Documentos\Santiago\Mis_Cosas\SistGesSol\sistgessol-back
 
 ## Instalación
 ```bash
-cd c:\Users\orjue\OneDrive\Documentos\Santiago\Mis_Cosas\SistGesSol\sistgessol-back
+cd sistgessol-back
 ```
 
 ```bash
@@ -194,3 +194,8 @@ curl -X POST "http://localhost:4000/auth/logout?id=123" -H "Authorization: Beare
 - Estados finales: `RESUELTA`, `CERRADA`, `CANCELADA`.
 - `CERRADA` requiere respuesta previa (`respuestaId`).
 - En estados finales se inhabilitan acciones de asignación/cierre según corresponda.
+
+## Base de datos
+- MySQL: `sistgesol` con usuario `root` (o cambiar en `database.ts`).
+- Importar `sistgesol.sql` para crear tablas y datos iniciales.
+- Xampp: Arranca el servicio MySQL y importa el archivo, asi que si falla en workbench, intenta importar desde xampp.

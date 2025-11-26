@@ -139,7 +139,7 @@ export function Perfil() {
                                             <span>Teléfono</span>
                                             <span className="text-white-50">{String(data.phone || '').trim() || '—'}</span>
                                         </div>
-                                        {/* Botón Cerrar sesión con texto blanco (sin estilos rojos) */}
+                                        {/* Botón Cerrar sesión */}
                                         <div className="mt-3">
                                             <button
                                                 className="btn btn-success w-100 text-white logout-btn"

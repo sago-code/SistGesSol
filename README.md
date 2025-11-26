@@ -16,13 +16,20 @@ SistGesSol es una aplicación web que permite a usuarios crear y gestionar solic
 - Frontend: React, React Router, Axios, Bootstrap/Bootstrap Icons, Chart.js, React Chart.js 2, React Paginate.
 - Backend: Node.js, Express, TypeScript, TypeORM, MySQL, JWT, bcrypt, dotenv, morgan, cors.
 
+
+## Instalación
+1) Clona el repositorio:
+```bash
+git clone https://github.com/sago-code/sistgessol.git
+```
+
 ## Documentación detallada
 - Frontend: [sistgessol-front/README.md](sistgessol-front/README.md)
 - Backend: [sistgessol-back/README.md](sistgessol-back/README.md)
 
 También puedes abrir directamente:
-- Frontend: `c:\Users\orjue\OneDrive\Documentos\Santiago\Mis_Cosas\SistGesSol\sistgessol-front\README.md`
-- Backend: `c:\Users\orjue\OneDrive\Documentos\Santiago\Mis_Cosas\SistGesSol\sistgessol-back\README.md`
+- Frontend: `\SistGesSol\sistgessol-front\README.md`
+- Backend: `\SistGesSol\sistgessol-back\README.md`
 
 ## Cómo ejecutar (resumen)
 1) Backend API (puerto 4000 por defecto)
